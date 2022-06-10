@@ -12,16 +12,12 @@ import sys
 import threading
 from getpass import getpass
 
-import rpyc
 from rpyc.utils.server import ThreadedServer
 
 from distorage.server import config
 from distorage.server.logger import logger
-from distorage.server.server_session import (
-    ServerSession,
-    ServerSessionService,
-)
 from distorage.server.server_manager import ServerManager
+from distorage.server.server_session import ServerSession, ServerSessionService
 
 
 def _start_host_server(passwd: str):
@@ -36,6 +32,7 @@ def _start_host_server(passwd: str):
 
 def start_host_server(passwd: str):
     threading.Thread(target=_start_host_server, args=(passwd,)).start()
+
 
 async def server_started():
     while not ServerManager.server_started:
@@ -55,8 +52,8 @@ async def discover_servers_routine():
 
             # Discover new servers
             try:
-                with ServerSession(known_ip, ServerManager.passwd) as server:
-                    known_servers = server.get_known_servers()
+                with ServerSession(known_ip, ServerManager.passwd) as session:
+                    known_servers = session.get_known_servers()
                     logger.debug(f"Known servers: {known_servers}")
                     for discovered_ip in known_servers:
                         ServerManager.add_server(discovered_ip)
@@ -64,7 +61,6 @@ async def discover_servers_routine():
                 logger.debug("Failed to connect to %s for discovering", known_ip)
 
         await asyncio.sleep(config.DISOCVER_INTERVAL)
-
 
 
 def setup_new_system():

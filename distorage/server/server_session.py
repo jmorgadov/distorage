@@ -5,16 +5,13 @@ from __future__ import annotations
 
 import sys
 from datetime import datetime
-from typing import List, Optional, Tuple, TypeVar
+from typing import List, Optional, Tuple
 
 import rpyc
 
 from distorage.server import config
 from distorage.server.logger import logger
 from distorage.server.server_manager import ServerManager
-
-T = TypeVar("T")
-ServerResponse = Tuple[bool, T]
 
 
 def ensure_registered(func):
@@ -34,7 +31,7 @@ class ServerSessionService(rpyc.Service):
     def __init__(self):
         self.server_ip: str = ""
 
-    def exposed_register(self, server_ip: str, passwd: str) -> ServerResponse[str]:
+    def exposed_register(self, server_ip: str, passwd: str) -> Tuple[bool, str]:
         """
         Registers the server.
 
@@ -47,8 +44,8 @@ class ServerSessionService(rpyc.Service):
 
         Returns
         -------
-        ServerResponse[str]
-            Message of the response.
+        Tuple[bool, str]
+            The success of the operation and the message.
         """
         if server_ip in ServerManager.knwon_servers:
             self.server_ip = server_ip
@@ -70,7 +67,7 @@ class ServerSessionService(rpyc.Service):
 
         Returns
         -------
-        ServerResponse[List[str]]
+        List[str]
             The list of known servers IP addreses.
         """
         return list(ServerManager.knwon_servers.keys())
@@ -86,8 +83,10 @@ class ServerSession:
 
     def __enter__(self):
         self.server_session = rpyc.connect(self.server_ip, port=config.SERVER_PORT)
-        ret, msg = self.server_session.root.register(ServerManager.host_ip, self.passwd)
-        if not ret:
+        succ, msg = self.server_session.root.register(
+            ServerManager.host_ip, self.passwd
+        )
+        if not succ:
             logger.error(msg)
             sys.exit(1)
         server_info = ServerManager.knwon_servers[self.server_ip]

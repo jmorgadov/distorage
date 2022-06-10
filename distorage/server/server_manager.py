@@ -42,7 +42,10 @@ class ServerManager:
         server_ip : str
             The IP address of the server.
         """
-        if server_ip in ServerManager.knwon_servers:
+        if (
+            server_ip in ServerManager.knwon_servers
+            or server_ip == ServerManager.host_ip
+        ):
             return
 
         logger.info("Adding server %s", server_ip)
