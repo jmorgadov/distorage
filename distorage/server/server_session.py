@@ -52,7 +52,7 @@ class ServerSessionService(rpyc.Service):
             return True, "Server already registered"
 
         if passwd != ServerManager.passwd:
-            logger.info("Incorrect server password")
+            logger.info("Server %s try to connect using a password", server_ip)
             return False, "Wrong password"
 
         logger.info("Registering server %s", server_ip)
