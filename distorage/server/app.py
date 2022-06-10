@@ -19,23 +19,26 @@ from distorage.server import config
 from distorage.server.logger import logger
 from distorage.server.server_session import (
     ServerSession,
-    ServerSessionManager,
     ServerSessionService,
 )
+from distorage.server.server_manager import ServerManager
 
 
 def _start_host_server(passwd: str):
     host_ip = socket.gethostbyname(socket.gethostname())
     port = config.SERVER_PORT
-    ServerSessionManager.setup(host_ip, passwd)
+    ServerManager.setup(host_ip, passwd)
     server = ThreadedServer(ServerSessionService, hostname=host_ip, port=port)
-    logger.info(f"Server session started on %s:%s", host_ip, port)
-    ServerSessionManager.server_started = True
+    logger.info("Server session started on %s:%s", host_ip, port)
+    ServerManager.server_started = True
     server.start()
 
 
+def start_host_server(passwd: str):
+    threading.Thread(target=_start_host_server, args=(passwd,)).start()
+
 async def server_started():
-    while not ServerSessionManager.server_started:
+    while not ServerManager.server_started:
         await asyncio.sleep(0.2)
 
 
@@ -44,28 +47,24 @@ async def discover_servers_routine():
     await server_started()
     while True:
         logger.debug("Discovering servers...")
-        known_servers = list(ServerSessionManager.knwon_servers.keys())
+        known_servers = list(ServerManager.knwon_servers.keys())
         for known_ip in known_servers:
             # Check if the server hasn't been active for a while
-            if ServerSessionManager.check_server_timeout(known_ip):
+            if ServerManager.check_server_timeout(known_ip):
                 continue
 
             # Discover new servers
             try:
-                with ServerSession(known_ip, ServerSessionManager.passwd) as server:
+                with ServerSession(known_ip, ServerManager.passwd) as server:
                     known_servers = server.get_known_servers()
                     logger.debug(f"Known servers: {known_servers}")
                     for discovered_ip in known_servers:
-                        ServerSessionManager.add_server(discovered_ip)
-            except Exception as e:
-                print(type(e))
+                        ServerManager.add_server(discovered_ip)
+            except:
                 logger.debug("Failed to connect to %s for discovering", known_ip)
 
         await asyncio.sleep(config.DISOCVER_INTERVAL)
 
-
-def start_host_server(passwd: str):
-    threading.Thread(target=_start_host_server, args=(passwd,)).start()
 
 
 def setup_new_system():
@@ -80,10 +79,10 @@ def setup_new_system():
     asyncio.run(discover_servers_routine())
 
 
-def connect_to_system(ip: str, passwd: str):
+def connect_to_system(server_ip: str, passwd: str):
     """Connects to the system."""
     start_host_server(passwd)
-    ServerSessionManager.add_server(ip)
+    ServerManager.add_server(server_ip)
     asyncio.run(discover_servers_routine())
 
 
