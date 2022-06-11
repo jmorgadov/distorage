@@ -1,0 +1,7 @@
+#!/bin/bash
+
+CONTAINER_NAME="dist_$(date +%H%M%S_%N)"
+echo "Creating container $CONTAINER_NAME"
+docker run -itd --mount type=bind,source="$(pwd)",target="/app" --name $CONTAINER_NAME distorage
+echo "Running server with args: $@"
+docker exec --workdir /app $CONTAINER_NAME python main.py $@

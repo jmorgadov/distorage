@@ -1,0 +1,25 @@
+#!/bin/bash
+
+PASSWORD=$1
+SERVERS_COUNT=${2:-3}
+TERM=${3:-alacritty}
+
+RUN_SINGLE_SERVER_SCRIPT="./docker_scripts/run_single_server"
+
+echo "Removing old containers"
+./docker_scripts/stop_all
+
+LAST_CONTAINER_COUNT=$(docker ps -a | wc -l)
+for i in $(seq 1 $SERVERS_COUNT); do
+	echo "Starting server $i of $SERVERS_COUNT"
+	if [ "$i" -eq "1" ]; then
+		echo "Creating first server"
+		$TERM -e $RUN_SINGLE_SERVER_SCRIPT new $PASSWORD &
+	else
+		echo "Waiting for last server to start ..."
+		while [ "$(docker ps -a | wc -l)" -eq "$LAST_CONTAINER_COUNT" ]; do
+			sleep 1
+		done
+		$TERM -e $RUN_SINGLE_SERVER_SCRIPT discover $PASSWORD &
+	fi
+done
