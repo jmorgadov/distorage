@@ -12,14 +12,38 @@ import sys
 import threading
 from getpass import getpass
 from typing import Optional
-import rpyc
 
+import rpyc
 from rpyc.utils.server import ThreadedServer
 
 from distorage.server import config
+from distorage.server.client_session import ClientSessionService
 from distorage.server.logger import logger
 from distorage.server.server_manager import ServerManager
 from distorage.server.server_session import ServerSession, ServerSessionService
+
+
+async def server_started():
+    while not ServerManager.server_started:
+        await asyncio.sleep(0.2)
+
+
+def _start_client_sessions():
+    client_sessions = ThreadedServer(
+        ClientSessionService, hostname=ServerManager.host_ip, port=config.CLIENT_PORT
+    )
+    logger.info(
+        "Client sessions listener started on %s:%s",
+        ServerManager.host_ip,
+        config.CLIENT_PORT,
+    )
+    ServerManager.server_started = True
+    client_sessions.start()
+
+
+async def start_client_sessions_listener():
+    await server_started()
+    threading.Thread(target=_start_client_sessions).start()
 
 
 def _start_host_server(passwd: str):
@@ -27,18 +51,14 @@ def _start_host_server(passwd: str):
     port = config.SERVER_PORT
     ServerManager.setup(host_ip, passwd)
     server = ThreadedServer(ServerSessionService, hostname=host_ip, port=port)
-    logger.info("Server session started on %s:%s", host_ip, port)
+    logger.info("Server sessions listener started on %s:%s", host_ip, port)
     ServerManager.server_started = True
     server.start()
 
 
 def start_host_server(passwd: str):
     threading.Thread(target=_start_host_server, args=(passwd,)).start()
-
-
-async def server_started():
-    while not ServerManager.server_started:
-        await asyncio.sleep(0.2)
+    asyncio.run(start_client_sessions_listener())
 
 
 async def discover_servers_routine():
@@ -74,13 +94,18 @@ def ask_passwd() -> str:
     return passwd
 
 
+async def run_coroutines():
+    await server_started()
+    asyncio.run(discover_servers_routine())
+
+
 def setup_new_system(passwd: Optional[str] = None):
     """Setups a new system."""
     if not passwd:
         passwd = ask_passwd()
     start_host_server(passwd)
     logger.info("New system setup successfully!")
-    asyncio.run(discover_servers_routine())
+    asyncio.run(run_coroutines())
 
 
 def connect_to_system(server_ip: str, passwd: Optional[str] = None):
@@ -89,7 +114,7 @@ def connect_to_system(server_ip: str, passwd: Optional[str] = None):
         passwd = ask_passwd()
     start_host_server(passwd)
     ServerManager.add_server(server_ip)
-    asyncio.run(discover_servers_routine())
+    asyncio.run(run_coroutines())
 
 
 def search_local_servers() -> Optional[str]:
