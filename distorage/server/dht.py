@@ -1,6 +1,12 @@
 from __future__ import annotations
 
-from typing import List, Optional
+from typing import Generic, List, Optional, TypeVar
+
+T = TypeVar("T")
+
+class DHT(Generic[T]):
+    def find(self, table_key: int) -> Optional[T]:
+        raise NotImplementedError()
 
 
 class ChordNode:
