@@ -13,7 +13,7 @@ absrtaction allows the implementation of CLI or GUI applications in an easy and
 clean way.
 """
 
-from typing import Any, Optional
+from typing import Any, Union
 
 import rpyc
 
@@ -36,7 +36,7 @@ class ClientSession:
     def __init__(self, username: str, password: str):
         self._name = username
         self._pass = password
-        self._conn: Optional[rpyc.Connection] = None
+        self._conn: Union[rpyc.Connection, None] = None
 
     @property
     def _root(self) -> Any:

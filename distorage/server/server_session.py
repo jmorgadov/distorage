@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import sys
 from datetime import datetime
-from typing import List, Optional, Tuple
+from typing import List, Union, Tuple
 
 import rpyc
 
@@ -79,7 +79,7 @@ class ServerSession:
     def __init__(self, server_ip: str, passwd: str):
         self.server_ip = server_ip
         self.passwd = passwd
-        self.server_session: Optional[rpyc.Connection] = None
+        self.server_session: Union[rpyc.Connection, None] = None
 
     def __enter__(self):
         self.server_session = rpyc.connect(self.server_ip, port=config.SERVER_PORT)

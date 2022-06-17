@@ -1,4 +1,4 @@
-from typing import List, Optional, Tuple
+from typing import List, Union, Tuple
 
 import rpyc
 
@@ -13,8 +13,8 @@ def _ensure_registered(func):
 
 class ClientSessionService(rpyc.Service):
     def __init__(self):
-        self.username: Optional[str] = None
-        self.passwd: Optional[str] = None
+        self.username: Union[str, None] = None
+        self.passwd: Union[str, None] = None
 
     def expose_register(self, username: str, password: str):
         raise NotImplementedError()

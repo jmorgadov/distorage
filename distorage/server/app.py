@@ -11,7 +11,7 @@ import socket
 import sys
 import threading
 from getpass import getpass
-from typing import Optional
+from typing import Union
 
 import rpyc
 from rpyc.utils.server import ThreadedServer
@@ -99,7 +99,7 @@ async def run_coroutines():
     asyncio.run(discover_servers_routine())
 
 
-def setup_new_system(passwd: Optional[str] = None):
+def setup_new_system(passwd: Union[str, None] = None):
     """Setups a new system."""
     if not passwd:
         passwd = ask_passwd()
@@ -108,7 +108,7 @@ def setup_new_system(passwd: Optional[str] = None):
     asyncio.run(run_coroutines())
 
 
-def connect_to_system(server_ip: str, passwd: Optional[str] = None):
+def connect_to_system(server_ip: str, passwd: Union[str, None] = None):
     """Connects to the system."""
     if not passwd:
         passwd = ask_passwd()
@@ -117,7 +117,7 @@ def connect_to_system(server_ip: str, passwd: Optional[str] = None):
     asyncio.run(run_coroutines())
 
 
-def search_local_servers() -> Optional[str]:
+def search_local_servers() -> Union[str, None]:
     """Searches for local servers."""
     host_ip = socket.gethostbyname(socket.gethostname())
     subnet = ".".join(host_ip.split(".")[:-1]) + "."
