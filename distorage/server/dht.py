@@ -1,4 +1,6 @@
 from __future__ import annotations
+from hashlib import sha1
+from sys import hash_info
 
 from typing import Generic, List, Optional, TypeVar
 
@@ -10,17 +12,16 @@ class DHT(Generic[T]):
 
 
 class ChordNode:
-    def __init__(self, ip_addr, node_id: int):
-        self.ip_addr = ip_addr
-        self.node_id: int = node_id
-        self.fingers: List[Optional[int]] = [None] * 64
-        self.next_finger: int = 0
-        self.predecessor: Optional[ChordNode] = None
-        self.successor: Optional[ChordNode] = None
-
-    def find_successor(self, node_id: int):
-        # TODO: check what happens if self.successor is None
-        if self.node_id < node_id <= self.successor.node_id:
+    def __init__(self, ip_addr: str):
+        self.ip_addr: str = ip_addr
+        self.node_id: int = hash_info(ip_addr)
+        self.predecessor: str = ip_addr
+        self.successor: str = None
+        self.fingers: List[int] = [0] * 64
+        self.next: int = 0
+    
+    def find_successor(self, node_id: int)-> str:
+        if _belongs(node_id, self.node_id, hash_info(self.successor), True):
             return self.successor
         closet = self.closest_preceding_node(node_id)
         return closet.find_successor(node_id)
@@ -29,8 +30,7 @@ class ChordNode:
         for i in range(len(self.fingers), 0, -1):
             if not self.fingers[i]:
                 continue
-            # TODO: fingers[i] might be None
-            if self.node_id < self.fingers[i] < node_id:
+            if _belongs(self.fingers[i], self.node_id, node_id, False):
                 return self.fingers[i]
         return self
 
@@ -39,21 +39,45 @@ class ChordNode:
         self.successor = node.find_successor(self.node_id)
 
     def stabilize(self) -> None:
-        # TODO: check what happens if self.successor is None
-        temp = self.successor.predecessor
-        if self.node_id < temp.node_id < self.successor.node_id:
-            self.successor = temp
-        self.successor.notify(self)
+        # Conect to successor and ask for it's predecessor ip
+        #temp = self.successor.predecessor
+        #if _belongs(temp.node_id, self.node_id, self.successor.node_id, False):
+        #    self.successor = temp
+        #self.successor.notify(self)
+        raise NotImplementedError()
 
-    def notify(self, node: ChordNode) -> None:
+    def notify(self, node_ip: str) -> None:
         if (
             not self.predecessor
-            or self.predecessor.node_id < node.node_id < self.node_id
+            or _belongs(hash_info(node_ip), hash_info(self.predecessor), self.node_id)
         ):
-            self.predecessor = node
+            self.predecessor = node_ip
 
+    # Call periodically
     def fix_fingers(self):
-        raise NotImplementedError()
+        self.next += 1
+        if self.next > 160:
+            self.next = 0
+        self.fingers[self.next] = self.find_successor(self.node_id + 1<<self.next-1)
 
-    def check_predecessor(self):
+    # Call periodically, checks whether predecessor has failed.
+    def check_predecessor(self): #TODO: implement
+        # if predecessor doesn't respond(PING till respond)
+        #   predecesor  = None
         raise NotImplementedError()
+        
+
+
+def _belongs(value: int, lower: int, upper: int, include_upper: bool)-> bool:
+        result = False
+        result = result or (lower < value <= upper )
+        result = result or (lower < value < upper)
+        result = result or (lower > value <= upper and lower > upper)
+        result = result or (lower > value < upper and lower > upper)
+        return (result and include_upper) if include_upper else result
+
+
+def hash_info(value: str)-> int:
+    value = value.encode('utf-8')
+    hs = sha1(value).digest()
+    return int.frombytes(hs,ordering="big")
