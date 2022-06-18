@@ -3,7 +3,7 @@ This contains the server session service used for inter-servers communication.
 """
 
 from datetime import datetime
-from typing import Any, Dict, Tuple
+from typing import Any, Dict
 
 from distorage.server import config
 from distorage.server.logger import logger

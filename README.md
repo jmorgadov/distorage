@@ -22,16 +22,16 @@ python main.py server [COMMAND] [ARGS]
 **Server commands are:**
 
 - `new [PASSWORD]`
-   
+
    Starts a new service.
 
 - `discover [PASSWORD]`
-  
+
   Look for other servers in the local network.
 
 - `connect [IP_ADDR] [PASSWORD]`
-  
-  Connect to a server in a specified IP address. 
+
+  Connect to a server in a specified IP address.
 
 > The `[PASSWORD]` argument can be omited, in that case it will be asked later
 > in the standar input.
@@ -64,5 +64,5 @@ docker build --tag distorage .
 
 Where `[COUNT]` is the number of servers to start.
 
-> With this option the first server will be run with the `new` command to start 
+> With this option the first server will be run with the `new` command to start
 > a new service and the rest will be started with the `discover` command.

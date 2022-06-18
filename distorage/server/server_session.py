@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import sys
 from datetime import datetime
-from typing import List, Union, Tuple
+from typing import List, Tuple, Union
 
 import rpyc
 
@@ -61,7 +61,7 @@ class ServerSessionService(rpyc.Service):
         return True, "Server registered successfully"
 
     @ensure_registered
-    def exposed_get_known_servers(self) -> List[str]:
+    def exposed_get_known_servers(self) -> List[str]:  # pylint: disable=no-self-use
         """
         Gets the list of knowns servers.
 

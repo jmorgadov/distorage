@@ -1,3 +1,7 @@
+"""
+This is the main script for starting servers and clients.
+"""
+
 import sys
 
 from distorage.server import app

@@ -18,7 +18,6 @@ from typing import Any, Union
 import rpyc
 
 from distorage.server import config
-from distorage.server.client_session import ClientSessionService
 
 
 class ClientSession:

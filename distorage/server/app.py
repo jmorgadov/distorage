@@ -22,8 +22,11 @@ from distorage.server.logger import logger
 from distorage.server.server_manager import ServerManager
 from distorage.server.server_session import ServerSession, ServerSessionService
 
+IP_REGEX = re.compile(r"^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$")
+
 
 async def server_started():
+    """Waits until the server is started."""
     while not ServerManager.server_started:
         await asyncio.sleep(0.2)
 
@@ -42,6 +45,7 @@ def _start_client_sessions():
 
 
 async def start_client_sessions_listener():
+    """Starts the client sessions listener."""
     await server_started()
     threading.Thread(target=_start_client_sessions).start()
 
@@ -57,6 +61,14 @@ def _start_host_server(passwd: str):
 
 
 def start_host_server(passwd: str):
+    """
+    Starts the host server.
+
+    Parameters
+    ----------
+    passwd : str
+        The system password.
+    """
     threading.Thread(target=_start_host_server, args=(passwd,)).start()
     asyncio.run(start_client_sessions_listener())
 
@@ -76,16 +88,17 @@ async def discover_servers_routine():
             try:
                 with ServerSession(known_ip, ServerManager.passwd) as session:
                     known_servers = session.get_known_servers()
-                    logger.debug(f"Known servers: {known_servers}")
+                    logger.debug("Known servers: %s", str(known_servers))
                     for discovered_ip in known_servers:
                         ServerManager.add_server(discovered_ip)
-            except:
+            except:  # pylint: disable=bare-except
                 logger.debug("Failed to connect to %s for discovering", known_ip)
 
         await asyncio.sleep(config.DISOCVER_INTERVAL)
 
 
 def ask_passwd() -> str:
+    """Asks for the system password."""
     passwd = getpass("Enter the password for the new system: \n> ").strip()
     passwd_conf = getpass("Repeat the password for confirmation: \n> ").strip()
     if passwd != passwd_conf:
@@ -94,8 +107,8 @@ def ask_passwd() -> str:
     return passwd
 
 
-async def run_coroutines():
-    await server_started()
+def run_coroutines():
+    """Runs all the system coroutines."""
     asyncio.run(discover_servers_routine())
 
 
@@ -105,7 +118,7 @@ def setup_new_system(passwd: Union[str, None] = None):
         passwd = ask_passwd()
     start_host_server(passwd)
     logger.info("New system setup successfully!")
-    asyncio.run(run_coroutines())
+    run_coroutines()
 
 
 def connect_to_system(server_ip: str, passwd: Union[str, None] = None):
@@ -114,7 +127,7 @@ def connect_to_system(server_ip: str, passwd: Union[str, None] = None):
         passwd = ask_passwd()
     start_host_server(passwd)
     ServerManager.add_server(server_ip)
-    asyncio.run(run_coroutines())
+    run_coroutines()
 
 
 def search_local_servers() -> Union[str, None]:
@@ -129,13 +142,14 @@ def search_local_servers() -> Union[str, None]:
             conn.close()
             logger.info("Found server at %s", server_ip)
             return server_ip
-        except:
+        except:  # pylint: disable=bare-except
             continue
     logger.info("No local servers found")
     return None
 
 
 def main():
+    """Main function."""
     if len(sys.argv) < 2:
         print("No command given. Options are: new, connect, discover")
         sys.exit(1)
@@ -154,9 +168,7 @@ def main():
             print("No server IP given")
             sys.exit(1)
         server_ip = sys.argv[2]
-        if server_ip and not re.match(
-            r"^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$", server_ip
-        ):
+        if server_ip and not IP_REGEX.match(server_ip):
             print(f"Invalid IP address: '{server_ip}'")
             sys.exit(1)
         passwd = None if len(sys.argv) < 4 else sys.argv[3]
