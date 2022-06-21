@@ -1,12 +1,16 @@
 """
 This contains the server session service used for inter-servers communication.
 """
+from __future__ import annotations
 
 from datetime import datetime
-from typing import Any, Dict
+from typing import TYPE_CHECKING, Any, Dict, Union
 
 from distorage.server import config
 from distorage.server.logger import logger
+
+if TYPE_CHECKING:
+    from distorage.server.dht import ChordNode, DhtID
 
 
 class ServerManager:
@@ -16,6 +20,36 @@ class ServerManager:
     host_ip: str = ""
     passwd: str = ""
     server_started: bool = False
+
+    _clients_dht: Union[ChordNode, None] = None
+    _data_dht: Union[ChordNode, None] = None
+
+    @staticmethod
+    def get_dht(dht_id: DhtID) -> ChordNode:
+        """
+        Get the DHT node for the given DHT ID.
+        """
+        if dht_id == DhtID.CLIENT:
+            return ServerManager.clients_dht()
+        if dht_id == DhtID.DATA:
+            return ServerManager.data_dht()
+        raise ValueError("Invalid DHT ID.")
+
+    @staticmethod
+    def clients_dht() -> ChordNode:
+        """
+        Get the clients DHT node.
+        """
+        assert ServerManager._clients_dht is not None
+        return ServerManager._clients_dht
+
+    @staticmethod
+    def data_dht() -> ChordNode:
+        """
+        Get the data DHT node.
+        """
+        assert ServerManager._data_dht is not None
+        return ServerManager._data_dht
 
     @staticmethod
     def setup(host_ip: str, passwd: str):
@@ -31,6 +65,8 @@ class ServerManager:
         """
         ServerManager.host_ip = host_ip
         ServerManager.passwd = passwd
+        ServerManager._clients_dht = ChordNode(host_ip, DhtID.CLIENT)
+        ServerManager._data_dht = ChordNode(host_ip, DhtID.DATA)
 
     @staticmethod
     def add_server(server_ip: str):

@@ -18,6 +18,7 @@ from rpyc.utils.server import ThreadedServer
 
 from distorage.server import config
 from distorage.server.client_session import ClientSessionService
+from distorage.server.dht_session import DhtSession
 from distorage.server.logger import logger
 from distorage.server.server_manager import ServerManager
 from distorage.server.server_session import ServerSession, ServerSessionService
@@ -107,9 +108,25 @@ def ask_passwd() -> str:
     return passwd
 
 
+async def check_dht_successor():
+    """Checks if the DHT successor is still alive."""
+    await server_started()
+    while True:
+        dht_nodes = [ServerManager.clients_dht(), ServerManager.data_dht()]
+        for dht_node in dht_nodes:
+            succ = dht_node.successor
+            if succ == dht_node.ip_addr and ServerManager.knwon_servers:
+                try:
+                    with DhtSession(succ, dht_node.dht_id) as session:
+                        succ = session.join(dht_node.ip_addr)
+                        dht_node.successor = succ
+                except:  # pylint: disable=bare-except
+                    continue
+
+
 def run_coroutines():
     """Runs all the system coroutines."""
-    asyncio.run(discover_servers_routine())
+    asyncio.gather(discover_servers_routine(), check_dht_successor())
 
 
 def setup_new_system(passwd: Union[str, None] = None):
