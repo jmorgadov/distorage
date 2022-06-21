@@ -10,6 +10,7 @@ import re
 import socket
 import sys
 import threading
+import time
 from getpass import getpass
 from typing import Union
 
@@ -18,7 +19,9 @@ from rpyc.utils.server import ThreadedServer
 
 from distorage.server import config
 from distorage.server.client_session import ClientSessionService
-from distorage.server.dht_session import DhtSession
+from distorage.server.dht import ChordNode
+from distorage.server.dht_id_enum import DhtID
+from distorage.server.dht_session import DhtSession, DhtSessionService
 from distorage.server.logger import logger
 from distorage.server.server_manager import ServerManager
 from distorage.server.server_session import ServerSession, ServerSessionService
@@ -54,11 +57,26 @@ async def start_client_sessions_listener():
 def _start_host_server(passwd: str):
     host_ip = socket.gethostbyname(socket.gethostname())
     port = config.SERVER_PORT
-    ServerManager.setup(host_ip, passwd)
+    clients_dht = ChordNode(host_ip, DhtID.CLIENT)
+    data_dht = ChordNode(host_ip, DhtID.DATA)
+    ServerManager.setup(host_ip, passwd, clients_dht, data_dht)
     server = ThreadedServer(ServerSessionService, hostname=host_ip, port=port)
     logger.info("Server sessions listener started on %s:%s", host_ip, port)
     ServerManager.server_started = True
     server.start()
+
+
+def _start_dht_services():
+    dhts = ThreadedServer(
+        DhtSessionService, hostname=ServerManager.host_ip, port=config.DHT_PORT
+    )
+    dhts.start()
+
+
+async def start_dht_services():
+    """Starts the DHT services."""
+    await server_started()
+    threading.Thread(target=_start_dht_services).start()
 
 
 def start_host_server(passwd: str):
@@ -72,12 +90,15 @@ def start_host_server(passwd: str):
     """
     threading.Thread(target=_start_host_server, args=(passwd,)).start()
     asyncio.run(start_client_sessions_listener())
+    asyncio.run(start_dht_services())
 
 
-async def discover_servers_routine():
+def discover_servers_routine():
     """Discovers the servers in the network."""
-    await server_started()
     while True:
+        time.sleep(config.DISOCVER_INTERVAL)
+        if not ServerManager.server_started:
+            continue
         logger.debug("Discovering servers...")
         known_servers = list(ServerManager.knwon_servers.keys())
         for known_ip in known_servers:
@@ -95,8 +116,6 @@ async def discover_servers_routine():
             except:  # pylint: disable=bare-except
                 logger.debug("Failed to connect to %s for discovering", known_ip)
 
-        await asyncio.sleep(config.DISOCVER_INTERVAL)
-
 
 def ask_passwd() -> str:
     """Asks for the system password."""
@@ -108,25 +127,31 @@ def ask_passwd() -> str:
     return passwd
 
 
-async def check_dht_successor():
+def check_dht_successor():
     """Checks if the DHT successor is still alive."""
-    await server_started()
     while True:
+        time.sleep(config.DHT_CHECK_SUCCESSOR_INTERVAL)
+        if not ServerManager.server_started:
+            continue
         dht_nodes = [ServerManager.clients_dht(), ServerManager.data_dht()]
         for dht_node in dht_nodes:
             succ = dht_node.successor
             if succ == dht_node.ip_addr and ServerManager.knwon_servers:
-                try:
-                    with DhtSession(succ, dht_node.dht_id) as session:
-                        succ = session.join(dht_node.ip_addr)
-                        dht_node.successor = succ
-                except:  # pylint: disable=bare-except
-                    continue
+                known_ser = list(ServerManager.knwon_servers.keys())[0]
+                with DhtSession(known_ser, dht_node.dht_id) as session:
+                    succ = session.join(dht_node.ip_addr)
+                    assert IP_REGEX.match(succ) is not None
+                    dht_node.successor = succ
 
 
 def run_coroutines():
     """Runs all the system coroutines."""
-    asyncio.gather(discover_servers_routine(), check_dht_successor())
+    thr_1 = threading.Thread(target=discover_servers_routine)
+    thr_2 = threading.Thread(target=check_dht_successor)
+    thr_1.start()
+    thr_2.start()
+    thr_1.join()
+    thr_2.join()
 
 
 def setup_new_system(passwd: Union[str, None] = None):

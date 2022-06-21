@@ -4,15 +4,15 @@ Contains a Distribute Hash Table implementation using CHORD protocol.
 
 from __future__ import annotations
 
-import asyncio
-import enum
+import threading
+import time
 from hashlib import sha1
 from typing import Any, Dict, List, Union
 
 import rpyc
 
-from distorage._tools import repeat_async
 from distorage.server import config
+from distorage.server.dht_id_enum import DhtID
 from distorage.server.dht_session import DhtSession
 from distorage.server.logger import logger
 
@@ -44,17 +44,9 @@ def sha1_hash(value: str) -> int:
     value : str
         The value to be hashed.
     """
+    print(f"Hashing {value}")
     _hs = sha1(value.encode("utf-8")).digest()
     return int.from_bytes(_hs, byteorder="big")
-
-
-class DhtID(enum.IntEnum):
-    """
-    Enum for the DHT ID.
-    """
-
-    CLIENT = 0
-    DATA = 1
 
 
 class ChordNode:
@@ -73,7 +65,26 @@ class ChordNode:
         self.fingers: List[str] = [""] * 160
         self.next: int = -1
         self.elems: Dict[int, Any] = {}
-        asyncio.gather(self.stabilize(), self.fix_fingers(), self.check_predecessor())
+        self.run_coroutines()
+
+    def log(self, msg):
+        """
+        Logs a message.
+
+        Parameters
+        ----------
+        msg : str
+            The message to be logged.
+        """
+        logger.debug("Node [%s %s]: %s", self.ip_addr, str(self.dht_id), msg)
+
+    def run_coroutines(self):
+        """
+        Runs all the coroutines of the node.
+        """
+        threading.Thread(target=self.stabilize).start()
+        threading.Thread(target=self.fix_fingers).start()
+        threading.Thread(target=self.check_predecessor).start()
 
     def find_successor(self, node_id: int) -> str:
         """
@@ -88,6 +99,8 @@ class ChordNode:
             return self.successor
 
         closest = self.closest_preceding_node(node_id)
+        if closest == self.ip_addr:
+            return self.ip_addr
         with DhtSession(closest, self.dht_id) as session:
             succ = session.find_successor(node_id)
         return succ
@@ -101,7 +114,7 @@ class ChordNode:
         node_id : int
             The key to find it's successor in a CHORD ring.
         """
-        for i in range(len(self.fingers), -1, -1):
+        for i in range(len(self.fingers) - 1, -1, -1):
             if not self.fingers[i]:
                 continue
             if _belongs(sha1_hash(self.fingers[i]), self.node_id, node_id):
@@ -112,6 +125,7 @@ class ChordNode:
         """
         Join a node to a Chord ring.
         """
+        self.log(f"Node [{node_ip}] is joining the ring thorugh {self.ip_addr}")
         node_succ = self.find_successor(self.node_id)
 
         # I'm the successor of the node, so it could be a predecessor
@@ -125,18 +139,20 @@ class ChordNode:
             ret = session.join(node_succ)
         return ret
 
-    @repeat_async(config.DHT_STABILIZE_INTERVAL)
     def stabilize(self):
         """
         Verifies a node immediate successor, and tells the successor about itself.
         """
-        with DhtSession(self.successor, self.dht_id) as session:
-            pred = session.get_predecessor(self.node_id)
-            if pred is not None and _belongs(
-                sha1_hash(pred), self.node_id, sha1_hash(self.successor)
-            ):
-                self.successor = pred
-            session.notify(self.ip_addr)
+        while True:
+            if self.successor != self.ip_addr:
+                with DhtSession(self.successor, self.dht_id) as session:
+                    pred = session.get_predecessor()
+                    if pred is not None and _belongs(
+                        sha1_hash(pred), self.node_id, sha1_hash(self.successor)
+                    ):
+                        self.successor = pred
+                    session.notify(self.ip_addr)
+            time.sleep(config.DHT_STABILIZE_INTERVAL)
 
     def notify(self, node_ip: str) -> None:
         """
@@ -152,26 +168,30 @@ class ChordNode:
         ):
             self.predecessor = node_ip
 
-    @repeat_async(config.DHT_FIX_FINGERS_INTERVAL)
     def fix_fingers(self):
         """
         Refreshes finger table entries and stores the index of the next finger to fix.
         """
-        self.next += 1
-        if self.next > 160:
-            self.next = 0
-        self.fingers[self.next] = self.find_successor(self.node_id + 1 << self.next - 1)
+        while True:
+            self.next += 1
+            if self.next >= 160:
+                self.next = 0
+            self.fingers[self.next] = self.find_successor(
+                self.node_id + (1 << self.next) - 1
+            )
+            time.sleep(config.DHT_FIX_FINGERS_INTERVAL)
 
-    @repeat_async(config.DHT_CHECK_PREDECESSOR_INTERVAL)
     def check_predecessor(self):
         """
         Checks whether a predecessor of a node has failed.
         """
-        if self.predecessor is not None:
-            try:
-                rpyc.connect(self.predecessor, config.DHT_PORT).close()
-            except:  # pylint: disable=bare-except
-                self.predecessor = None
+        while True:
+            if self.predecessor is not None:
+                try:
+                    rpyc.connect(self.predecessor, config.DHT_PORT).close()
+                except:  # pylint: disable=bare-except
+                    self.predecessor = None
+            time.sleep(config.DHT_CHECK_PREDECESSOR_INTERVAL)
 
     def find_location(self, key: int) -> str:
         """

@@ -11,18 +11,19 @@ from typing import Union
 import rpyc
 
 from distorage.server import config
+from distorage.server.dht_id_enum import DhtID
 from distorage.server.logger import logger
 from distorage.server.server_manager import ServerManager
 
 if typing.TYPE_CHECKING:
-    from distorage.server.dht import ChordNode, DhtID
+    from distorage.server.dht import ChordNode
 
 
 def ensure_registered(func):
     """Ensures that the dht node is resgistered before doing anything."""
 
     def wrapper(self: DhtSessionService, *args, **kwargs):
-        if self.dht_id != -1:
+        if self.dht_id == -1:
             return False, "Not registered"
         return func(self, *args, **kwargs)
 
@@ -44,9 +45,10 @@ class DhtSessionService(rpyc.Service):
         assert self.dht_node is not None
         return self.dht_node
 
-    def exposed_register(self, dht_id: DhtID, passwd: str):
+    def exposed_register(self, dht_id: int, passwd: str):
         """Register the Dht node"""
-        self.dht_id = dht_id
+        self.dht_id = DhtID(dht_id)
+        self.dht_node = ServerManager.get_dht(self.dht_id)
         if passwd != ServerManager.passwd:
             return False, "Wrong password"
         return True, ""

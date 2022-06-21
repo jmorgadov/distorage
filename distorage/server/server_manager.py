@@ -7,10 +7,11 @@ from datetime import datetime
 from typing import TYPE_CHECKING, Any, Dict, Union
 
 from distorage.server import config
+from distorage.server.dht_id_enum import DhtID
 from distorage.server.logger import logger
 
 if TYPE_CHECKING:
-    from distorage.server.dht import ChordNode, DhtID
+    from distorage.server.dht import ChordNode
 
 
 class ServerManager:
@@ -33,7 +34,7 @@ class ServerManager:
             return ServerManager.clients_dht()
         if dht_id == DhtID.DATA:
             return ServerManager.data_dht()
-        raise ValueError("Invalid DHT ID.")
+        raise ValueError(f"Invalid DHT ID: {dht_id}")
 
     @staticmethod
     def clients_dht() -> ChordNode:
@@ -52,7 +53,7 @@ class ServerManager:
         return ServerManager._data_dht
 
     @staticmethod
-    def setup(host_ip: str, passwd: str):
+    def setup(host_ip: str, passwd: str, clients_dht: ChordNode, data_dht: ChordNode):
         """
         Initializes the server session manager.
 
@@ -65,8 +66,8 @@ class ServerManager:
         """
         ServerManager.host_ip = host_ip
         ServerManager.passwd = passwd
-        ServerManager._clients_dht = ChordNode(host_ip, DhtID.CLIENT)
-        ServerManager._data_dht = ChordNode(host_ip, DhtID.DATA)
+        ServerManager._clients_dht = clients_dht
+        ServerManager._data_dht = data_dht
 
     @staticmethod
     def add_server(server_ip: str):
