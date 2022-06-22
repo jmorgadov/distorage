@@ -44,7 +44,6 @@ def sha1_hash(value: str) -> int:
     value : str
         The value to be hashed.
     """
-    print(f"Hashing {value}")
     _hs = sha1(value.encode("utf-8")).digest()
     return int.from_bytes(_hs, byteorder="big")
 
@@ -193,18 +192,7 @@ class ChordNode:
                     self.predecessor = None
             time.sleep(config.DHT_CHECK_PREDECESSOR_INTERVAL)
 
-    def find_location(self, key: int) -> str:
-        """
-        Finds where a key should be located in the ring.
-
-        Parameters
-        ----------
-        key : int
-            The key value to find in the ring.
-        """
-        return self.find_successor(key)
-
-    def find(self, elem_key: int) -> Any:
+    def find(self, elem_key: str) -> Any:
         """
         Gets an element in the node, previously found.
 
@@ -213,9 +201,18 @@ class ChordNode:
         elem_key : int
             The key of the element in the ring.
         """
-        return self.elems[elem_key]
+        self.log(f"Looking for {elem_key}")
+        hashed = sha1_hash(elem_key)
+        succ = self.find_successor(hashed)
+        if succ == self.ip_addr:
+            self.log(f"Element {elem_key} if from this node")
+            return self.elems.get(hashed, None)
+        self.log(f"Element {elem_key} is not from this node")
+        with DhtSession(succ, self.dht_id) as session:
+            val = session.find(elem_key)
+        return val
 
-    def store(self, elem_key: int, elem: Any):
+    def store(self, elem_key: str, elem: Any, overwrite: bool = True) -> bool:
         """
         Stores an element in the node, previously found.
 
@@ -224,4 +221,17 @@ class ChordNode:
         key : int
             The key of an specific elem in the ring.
         """
-        self.elems[elem_key] = elem
+        self.log(f"Storing at {elem_key}")
+        hashed = sha1_hash(elem_key)
+        succ = self.find_successor(hashed)
+        if succ == self.ip_addr:
+            self.log(f"Storing {str(elem)} in {elem_key}")
+            if not overwrite and hashed in self.elems:
+                self.log(f"Element {elem_key} already exists")
+                return False
+            self.elems[hashed] = elem
+            return True
+        self.log(f"Element {elem_key} is not from this node")
+        with DhtSession(succ, self.dht_id) as session:
+            val = session.store(elem_key, elem, overwrite)
+        return val

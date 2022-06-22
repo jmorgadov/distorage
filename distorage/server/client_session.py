@@ -8,6 +8,8 @@ from typing import List, Tuple, Union
 
 import rpyc
 
+from distorage.server.server_manager import ServerManager
+
 
 def _ensure_registered(func):
     def wrapper(self, *args, **kwargs):
@@ -25,7 +27,7 @@ class ClientSessionService(rpyc.Service):
         self.username: Union[str, None] = None
         self.passwd: Union[str, None] = None
 
-    def expose_register(self, username: str, password: str):
+    def exposed_register(self, username: str, password: str):
         """
         Registers a new user.
 
@@ -36,9 +38,13 @@ class ClientSessionService(rpyc.Service):
         password : str
             The password of the new user.
         """
-        raise NotImplementedError()
+        clients = ServerManager.clients_dht()
+        ret = clients.store(username, hash(password), overwrite=False)
+        if not ret:
+            return False, "Username already exists"
+        return True, ""
 
-    def expose_login(self, username: str, password: str):
+    def exposed_login(self, username: str, password: str):
         """
         Logins a user.
 
@@ -49,10 +55,16 @@ class ClientSessionService(rpyc.Service):
         password : str
             The password of the user.
         """
-        raise NotImplementedError()
+        clients = ServerManager.clients_dht()
+        val = clients.find(username)
+        if val is None:
+            return False, "Username already exists"
+        if val != hash(password):
+            return False, "Wrong password"
+        return True, ""
 
     @_ensure_registered
-    def expose_upload(self, file: List[bytes]) -> Tuple[bool, str]:
+    def exposed_upload(self, file: List[bytes]) -> Tuple[bool, str]:
         """
         Uploads a file.
 
@@ -71,7 +83,7 @@ class ClientSessionService(rpyc.Service):
         raise NotImplementedError()
 
     @_ensure_registered
-    def expose_download(self, file_name: str) -> Tuple[bool, List[bytes]]:
+    def exposed_download(self, file_name: str) -> Tuple[bool, List[bytes]]:
         """
         Downloads a file.
 
@@ -90,7 +102,7 @@ class ClientSessionService(rpyc.Service):
         raise NotImplementedError()
 
     @_ensure_registered
-    def expose_delete(self, file_name: str):
+    def exposed_delete(self, file_name: str):
         """
         Deletes a file.
 
@@ -102,7 +114,7 @@ class ClientSessionService(rpyc.Service):
         raise NotImplementedError()
 
     @_ensure_registered
-    def expose_list_files(self):
+    def exposed_list_files(self):
         """
         Lists all files.
 

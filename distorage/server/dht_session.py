@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import sys
 import typing
-from typing import Union
+from typing import Any, Union
 
 import rpyc
 
@@ -74,17 +74,33 @@ class DhtSessionService(rpyc.Service):
         """
         return self.node.find_successor(int(node_id))
 
+    @ensure_registered
     def exposed_get_predecessor(self) -> Union[str, None]:
         """
         Get the predecessor of the DHT node.
         """
         return self.node.predecessor
 
+    @ensure_registered
     def exposed_notify(self, node_ip: str):
         """
         Notify the DHT node of a possible predecessor.
         """
         self.node.notify(node_ip)
+
+    @ensure_registered
+    def exposed_find(self, elem_key: str) -> Any:
+        """
+        Find an element in the DHT.
+        """
+        return self.node.find(elem_key)
+
+    @ensure_registered
+    def exposed_store(self, elem_key: str, elem: Any, overwrite: bool = True) -> bool:
+        """
+        Store an element in the DHT.
+        """
+        return self.node.store(elem_key, elem, overwrite)
 
 
 class DhtSession:

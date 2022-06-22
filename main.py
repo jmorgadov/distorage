@@ -4,6 +4,7 @@ This is the main script for starting servers and clients.
 
 import sys
 
+from distorage.client_api.client_prompt import ClientPrompt
 from distorage.server import app
 
 if __name__ == "__main__":
@@ -13,4 +14,5 @@ if __name__ == "__main__":
         sys.argv.pop(1)
         app.main()
     elif sys.argv[1] == "client":
-        raise NotImplementedError("Client is not implemented yet")
+        prompt = ClientPrompt()
+        prompt()

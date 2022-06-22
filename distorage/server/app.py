@@ -1,5 +1,4 @@
-# This is just to declare some basic needed actions
-# that a server will do. This might be inplemented
+# This is just to declare some basic needed actions that a server will do. This might be inplemented
 # in other modules in the future.
 """
 This will contain all the server related implementation of the system.
