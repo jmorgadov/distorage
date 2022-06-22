@@ -58,7 +58,12 @@ class ClientPrompt:
         _clear()
         print(f"Connecting to server {server_addr}...")
         self._session = ClientSession(client_name, client_pass)
-        self._session.connect(server_addr)
+        try:
+            self._session.connect(server_addr)
+        except:  # pylint: disable=bare-except
+            print("Connection failed.")
+            time.sleep(2)
+            self.run()
         self._initial_promp()
 
     def _disconnect(self):
