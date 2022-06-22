@@ -3,6 +3,7 @@ Contains the main program for the Distorage client.
 """
 
 import os
+import sys
 import time
 from getpass import getpass
 from typing import Callable, Tuple, Union
@@ -19,7 +20,8 @@ def prompt(*options: Tuple[str, Callable], init_msg: str = "") -> str:
     Prompts the user to select an option from a list of options.
     """
     _clear()
-    print(init_msg)
+    if init_msg:
+        print(init_msg)
     print("Please select an option:")
     for i, option in enumerate(options):
         print(f"{i + 1:>2}) {option[0]}")
@@ -31,6 +33,7 @@ def prompt(*options: Tuple[str, Callable], init_msg: str = "") -> str:
             raise ValueError
         except ValueError:
             print("Invalid choice.")
+            time.sleep(2)
 
 
 class ClientPrompt:
@@ -47,6 +50,10 @@ class ClientPrompt:
         assert self._session is not None
         return self._session
 
+    def _exit(self):
+        _clear()
+        sys.exit(0)
+
     def _connect(self, client_name: str, client_pass: str, server_addr: str):
         _clear()
         print(f"Connecting to server {server_addr}...")
@@ -56,6 +63,7 @@ class ClientPrompt:
 
     def _disconnect(self):
         self.session.disconnect()
+        self._initial_promp()
 
     def _login(self):
         ret, msg = self.session.login()
@@ -106,9 +114,13 @@ class ClientPrompt:
         prompt(
             ("Login", self._login),
             ("Register", self._register),
+            ("Back", self.run),
+            ("Exit", self._exit),
         )
 
-    def __call__(self):
+    def run(self):
+        """Entry point for the client prompt."""
+        _clear()
         client_name = input("Enter your name: ")
         client_password = getpass("Enter your password: ").strip()
         server_addr = input("Server address: ")

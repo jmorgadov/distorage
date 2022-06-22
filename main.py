@@ -14,5 +14,4 @@ if __name__ == "__main__":
         sys.argv.pop(1)
         app.main()
     elif sys.argv[1] == "client":
-        prompt = ClientPrompt()
-        prompt()
+        ClientPrompt().run()
