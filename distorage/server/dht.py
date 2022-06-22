@@ -201,7 +201,6 @@ class ChordNode:
         elem_key : int
             The key of the element in the ring.
         """
-        self.log(f"Looking for {elem_key}")
         hashed = sha1_hash(elem_key)
         succ = self.find_successor(hashed)
         if succ == self.ip_addr:
@@ -221,7 +220,6 @@ class ChordNode:
         key : int
             The key of an specific elem in the ring.
         """
-        self.log(f"Storing at {elem_key}")
         hashed = sha1_hash(elem_key)
         succ = self.find_successor(hashed)
         if succ == self.ip_addr:
