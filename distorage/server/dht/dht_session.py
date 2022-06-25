@@ -10,9 +10,9 @@ from typing import Any, Union
 
 import rpyc
 
+from distorage.logger import logger
 from distorage.server import config
-from distorage.server.dht_id_enum import DhtID
-from distorage.server.logger import logger
+from distorage.server.dht import DhtID
 from distorage.server.server_manager import ServerManager
 
 if typing.TYPE_CHECKING:

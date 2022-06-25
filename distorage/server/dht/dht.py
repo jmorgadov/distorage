@@ -11,10 +11,9 @@ from typing import Any, Dict, List, Union
 
 import rpyc
 
+from distorage.logger import logger
 from distorage.server import config
-from distorage.server.dht_id_enum import DhtID
-from distorage.server.dht_session import DhtSession
-from distorage.server.logger import logger
+from distorage.server.dht import DhtID, DhtSession
 
 
 def _belongs(value: int, lower: int, upper: int) -> bool:

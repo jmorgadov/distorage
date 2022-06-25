@@ -6,9 +6,9 @@ from __future__ import annotations
 from datetime import datetime
 from typing import TYPE_CHECKING, Any, Dict, Union
 
+from distorage.logger import logger
 from distorage.server import config
-from distorage.server.dht_id_enum import DhtID
-from distorage.server.logger import logger
+from distorage.server.dht import DhtID
 
 if TYPE_CHECKING:
     from distorage.server.dht import ChordNode

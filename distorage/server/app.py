@@ -16,12 +16,10 @@ from typing import Union
 import rpyc
 from rpyc.utils.server import ThreadedServer
 
+from distorage.logger import logger
 from distorage.server import config
 from distorage.server.client_session import ClientSessionService
-from distorage.server.dht import ChordNode
-from distorage.server.dht_id_enum import DhtID
-from distorage.server.dht_session import DhtSession, DhtSessionService
-from distorage.server.logger import logger
+from distorage.server.dht import ChordNode, DhtID, DhtSession, DhtSessionService
 from distorage.server.server_manager import ServerManager
 from distorage.server.server_session import ServerSession, ServerSessionService
 
