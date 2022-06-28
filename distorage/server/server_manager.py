@@ -8,10 +8,10 @@ from typing import TYPE_CHECKING, Any, Dict, Union
 
 from distorage.logger import logger
 from distorage.server import config
-from distorage.server.dht import DhtID
+from distorage.server.dht.dht_id_enum import DhtID
 
 if TYPE_CHECKING:
-    from distorage.server.dht import ChordNode
+    from distorage.server.dht.dht import ChordNode
 
 
 class ServerManager:

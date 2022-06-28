@@ -8,6 +8,7 @@ from typing import List, Tuple, Union
 
 import rpyc
 
+from distorage.response import VoidResponse, new_error_response, new_void_respone
 from distorage.server.server_manager import ServerManager
 
 
@@ -27,7 +28,7 @@ class ClientSessionService(rpyc.Service):
         self.username: Union[str, None] = None
         self.passwd: Union[str, None] = None
 
-    def exposed_register(self, username: str, password: str):
+    def exposed_register(self, username: str, password: str) -> VoidResponse:
         """
         Registers a new user.
 
@@ -39,12 +40,9 @@ class ClientSessionService(rpyc.Service):
             The password of the new user.
         """
         clients = ServerManager.clients_dht()
-        ret = clients.store(username, hash(password), overwrite=False)
-        if not ret:
-            return False, "Username already exists"
-        return True, ""
+        return clients.store(username, hash(password), overwrite=False)
 
-    def exposed_login(self, username: str, password: str):
+    def exposed_login(self, username: str, password: str) -> VoidResponse:
         """
         Logins a user.
 
@@ -56,12 +54,12 @@ class ClientSessionService(rpyc.Service):
             The password of the user.
         """
         clients = ServerManager.clients_dht()
-        val = clients.find(username)
-        if val is None:
-            return False, "Username already exists"
+        val, resp, _ = clients.find(username)
+        if not resp or val is None:
+            return new_error_response("Failed to login. Try again later.")
         if val != hash(password):
-            return False, "Wrong password"
-        return True, ""
+            return new_error_response("Wrong password")
+        return new_void_respone()
 
     @_ensure_registered
     def exposed_upload(self, file: List[bytes]) -> Tuple[bool, str]:

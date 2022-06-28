@@ -4,19 +4,20 @@ DHT session service for node communications.
 
 from __future__ import annotations
 
-import sys
 import typing
 from typing import Any, Union
 
 import rpyc
 
+from distorage.exceptions import ServiceConnectionError
 from distorage.logger import logger
+from distorage.response import Response, VoidResponse, new_error_response
 from distorage.server import config
-from distorage.server.dht import DhtID
+from distorage.server.dht.dht_id_enum import DhtID
 from distorage.server.server_manager import ServerManager
 
 if typing.TYPE_CHECKING:
-    from distorage.server.dht import ChordNode
+    from distorage.server.dht.dht import ChordNode
 
 
 def ensure_registered(func):
@@ -45,23 +46,23 @@ class DhtSessionService(rpyc.Service):
         assert self.dht_node is not None
         return self.dht_node
 
-    def exposed_register(self, dht_id: int, passwd: str):
+    def exposed_register(self, dht_id: int, passwd: str) -> VoidResponse:
         """Register the Dht node"""
         self.dht_id = DhtID(dht_id)
         self.dht_node = ServerManager.get_dht(self.dht_id)
         if passwd != ServerManager.passwd:
-            return False, "Wrong password"
-        return True, ""
+            return new_error_response("Wrong password")
+        return new_error_response("Registered")
 
     @ensure_registered
-    def exposed_join(self, node_ip: str):
+    def exposed_join(self, node_ip: str) -> Response[str]:
         """
         Join the DHT node to the network.
         """
         return self.node.join(node_ip)
 
     @ensure_registered
-    def exposed_find_successor(self, node_id: int) -> str:
+    def exposed_find_successor(self, node_id: int) -> Response[str]:
         """
         Find the successor node of a specific id.
 
@@ -89,18 +90,27 @@ class DhtSessionService(rpyc.Service):
         self.node.notify(node_ip)
 
     @ensure_registered
-    def exposed_find(self, elem_key: str) -> Any:
+    def exposed_find(self, elem_key: str) -> Response[Any]:
         """
         Find an element in the DHT.
         """
         return self.node.find(elem_key)
 
     @ensure_registered
-    def exposed_store(self, elem_key: str, elem: Any, overwrite: bool = True) -> bool:
+    def exposed_store(
+        self, elem_key: str, elem: Any, overwrite: bool = True
+    ) -> VoidResponse:
         """
         Store an element in the DHT.
         """
         return self.node.store(elem_key, elem, overwrite)
+
+    @ensure_registered
+    def exposed_store_replica(self, elem_key: str, elem: Any):
+        """
+        Store a replica of an element in the node.
+        """
+        self.node.store_replica(elem_key, elem)
 
 
 class DhtSession:
@@ -112,11 +122,18 @@ class DhtSession:
         self.dht_session: Union[rpyc.Connection, None] = None
 
     def __enter__(self):
-        self.dht_session = rpyc.connect(self.server_ip, port=config.DHT_PORT)
-        succ, msg = self.dht_session.root.register(self.dht_id, ServerManager.passwd)
-        if not succ:
-            logger.error(msg)
-            sys.exit(1)
+        try:
+            self.dht_session = rpyc.connect(self.server_ip, port=config.DHT_PORT)
+        except Exception as exc:
+            logger.error("Could not connect to DHT server")
+            raise ServiceConnectionError("Could not connect to DHT server") from exc
+
+        resp: VoidResponse = self.dht_session.root.register(
+            self.dht_id, ServerManager.passwd
+        )
+        if not resp:
+            logger.error(resp.msg)
+            raise ServiceConnectionError(resp.msg)
         return self.dht_session.root
 
     def __exit__(self, exc_type, exc_value, traceback):

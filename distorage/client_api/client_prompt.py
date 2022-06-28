@@ -71,7 +71,7 @@ class ClientPrompt:
         self._initial_promp()
 
     def _login(self):
-        ret, msg = self.session.login()
+        _, ret, msg = self.session.login()
         if not ret:
             print(f"Login failed: {msg}")
             time.sleep(2)
@@ -80,7 +80,7 @@ class ClientPrompt:
             self._distorage()
 
     def _register(self):
-        ret, msg = self.session.register()
+        _, ret, msg = self.session.register()
         if not ret:
             print(f"Registration failed: {msg}")
             time.sleep(2)

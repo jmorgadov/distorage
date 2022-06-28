@@ -19,7 +19,9 @@ from rpyc.utils.server import ThreadedServer
 from distorage.logger import logger
 from distorage.server import config
 from distorage.server.client_session import ClientSessionService
-from distorage.server.dht import ChordNode, DhtID, DhtSession, DhtSessionService
+from distorage.server.dht.dht import ChordNode
+from distorage.server.dht.dht_id_enum import DhtID
+from distorage.server.dht.dht_session import DhtSession, DhtSessionService
 from distorage.server.server_manager import ServerManager
 from distorage.server.server_session import ServerSession, ServerSessionService
 
@@ -34,7 +36,10 @@ async def server_started():
 
 def _start_client_sessions():
     client_sessions = ThreadedServer(
-        ClientSessionService, hostname=ServerManager.host_ip, port=config.CLIENT_PORT
+        ClientSessionService,
+        hostname=ServerManager.host_ip,
+        port=config.CLIENT_PORT,
+        protocol_config={"allow_public_attrs": True},
     )
     logger.info(
         "Client sessions listener started on %s:%s",
@@ -65,7 +70,10 @@ def _start_host_server(passwd: str):
 
 def _start_dht_services():
     dhts = ThreadedServer(
-        DhtSessionService, hostname=ServerManager.host_ip, port=config.DHT_PORT
+        DhtSessionService,
+        hostname=ServerManager.host_ip,
+        port=config.DHT_PORT,
+        protocol_config={"allow_public_attrs": True},
     )
     dhts.start()
 
@@ -107,11 +115,11 @@ def discover_servers_routine():
             try:
                 with ServerSession(known_ip, ServerManager.passwd) as session:
                     known_servers = session.get_known_servers()
-                    logger.debug("Known servers: %s", str(known_servers))
                     for discovered_ip in known_servers:
                         ServerManager.add_server(discovered_ip)
             except:  # pylint: disable=bare-except
                 logger.debug("Failed to connect to %s for discovering", known_ip)
+        logger.debug("Known servers: %s", list(ServerManager.knwon_servers.keys()))
 
 
 def ask_passwd() -> str:
@@ -134,11 +142,27 @@ def check_dht_successor():
         for dht_node in dht_nodes:
             succ = dht_node.successor
             if succ == dht_node.ip_addr and ServerManager.knwon_servers:
-                known_ser = list(ServerManager.knwon_servers.keys())[0]
-                with DhtSession(known_ser, dht_node.dht_id) as session:
-                    succ = session.join(dht_node.ip_addr)
-                    assert IP_REGEX.match(succ) is not None
-                    dht_node.successor = succ
+                known_servers = list(ServerManager.knwon_servers.keys())
+                for known_ser in known_servers:
+                    # Check if the server was removed from the network while
+                    # checking the successor
+                    if known_ser not in ServerManager.knwon_servers:
+                        continue
+
+                    try:
+                        with DhtSession(known_ser, dht_node.dht_id) as session:
+                            succ, resp, _ = session.join(dht_node.ip_addr)
+                            if not resp:
+                                logger.error("Failed to join %s", dht_node.ip_addr)
+                                raise Exception("Failed to join")
+                            assert IP_REGEX.match(succ) is not None
+                            dht_node.successor = succ
+                    except Exception as exc:  # pylint: disable=broad-except
+                        logger.error(
+                            "Failed to connect to %s for checking successor: %s",
+                            known_ser,
+                            exc,
+                        )
 
 
 def run_coroutines():
