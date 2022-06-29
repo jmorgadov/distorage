@@ -154,13 +154,9 @@ class ChordNode:
 
         # I'm the successor of the node, so it is my predecessor
         if node_succ == self.ip_addr:
-            logger.debug("%s is the successor of %s", self.ip_addr, node_ip)
+            self.log(f"Updating predecessor to {node_ip}")
             self.predecessor = node_ip
-            pred_id = sha1_hash(self.predecessor)
-            keys = [k for k in self.elems if not _belongs(k, pred_id, self.node_id)]
-            if keys:
-                self.log(f"Moving {len(keys)} elements out from node")
-                self._update_elements(keys, self.elems)
+            self._fix_elem_dict()
             return new_response(self.ip_addr)
 
         # I'm not the successor of the node, so it will join to other node
@@ -200,15 +196,11 @@ class ChordNode:
             node_ip != self.predecessor
             and _belongs(sha1_hash(node_ip), sha1_hash(self.predecessor), self.node_id)
         ):
-            self.log(f"Node {node_ip} is the new predecessor")
+            self.log(f"Updating predecessor to {node_ip}")
             self.predecessor = node_ip
 
             # Move items that can be potentially stored in the new predecessor
-            pred_id = sha1_hash(self.predecessor)
-            keys = [k for k in self.elems if not _belongs(k, pred_id, self.node_id)]
-            if keys:
-                self.log(f"Moving {len(keys)} elements out from node")
-                self._update_elements(keys, self.elems)
+            self._fix_elem_dict()
 
     def fix_fingers(self):
         """
@@ -221,6 +213,16 @@ class ChordNode:
             succ, resp, _ = self.find_successor(self.node_id + (1 << self.next) - 1)
             self.fingers[self.next] = "" if not resp else succ
             time.sleep(config.DHT_FIX_FINGERS_INTERVAL)
+
+    def _fix_elem_dict(self):
+        """Checks if there are elements that don't belong here."""
+        if self.predecessor is None:
+            return
+        pred_id = sha1_hash(self.predecessor)
+        keys = [k for k in self.elems if not _belongs(k, pred_id, self.node_id)]
+        if keys:
+            self.log(f"Moving {len(keys)} elements out from node")
+            self._update_elements(keys, self.elems)
 
     def _update_elements(self, elem_keys: List[int], elem_dict: Dict[int, Any]):
         """Updates the elements position in the ring."""
