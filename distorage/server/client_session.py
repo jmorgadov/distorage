@@ -13,6 +13,7 @@ from distorage.response import (
     Response,
     VoidResponse,
     new_error_response,
+    new_response,
     new_void_respone,
 )
 from distorage.server.server_manager import ServerManager
@@ -118,7 +119,7 @@ class ClientSessionService(rpyc.Service):
         if not resp:
             return new_error_response(msg)
         client_info = json.loads(val)
-        client_info["files"].append(elem_key)
+        client_info["files"].append(sys_path)
         cli_resp = client_dht.store(
             self.username, json.dumps(client_info), overwrite=True
         )
@@ -160,7 +161,7 @@ class ClientSessionService(rpyc.Service):
         raise NotImplementedError()
 
     @_ensure_registered
-    def exposed_list_files(self):
+    def exposed_list_files(self) -> Response[List[str]]:
         """
         Lists all files.
 
@@ -169,4 +170,9 @@ class ClientSessionService(rpyc.Service):
         List[str]
             The names of all files.
         """
-        raise NotImplementedError()
+        client_dht = ServerManager.clients_dht()
+        val, resp, msg = client_dht.find(self.username)
+        if not resp:
+            return new_response([], False, msg)
+        client_info = json.loads(val)
+        return new_response(client_info["files"])

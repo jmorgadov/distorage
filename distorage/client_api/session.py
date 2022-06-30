@@ -13,11 +13,11 @@ absrtaction allows the implementation of CLI or GUI applications in an easy and
 clean way.
 """
 
-from typing import Any, Union
+from typing import Any, List, Union
 
 import rpyc
 
-from distorage.response import VoidResponse, new_void_respone
+from distorage.response import Response, VoidResponse, new_void_respone
 from distorage.server import config
 
 
@@ -113,7 +113,7 @@ class ClientSession:
         """
         return self._root.delete(file_name)
 
-    def list_files(self):
+    def list_files(self) -> Response[List[str]]:
         """
         Lists the files in the server.
         """

@@ -121,7 +121,7 @@ class ClientPrompt:
             self._distorage()
             return
 
-        file_name = input("File name [leave blank to go back]: ")
+        file_name = input(f"Destination path [{path_in_sys} if blank]: ")
         if not file_name:
             self._distorage()
             return
@@ -143,7 +143,18 @@ class ClientPrompt:
         self._distorage()
 
     def _list_files(self):
-        raise NotImplementedError()
+        files, resp, msg = self.session.list_files()
+        if not resp:
+            print(f"List files failed: {msg}")
+            time.sleep(2)
+            self._distorage()
+            return
+        print("Files:")
+        for file_name in files:
+            print("-", file_name)
+        print()
+        input("Press enter to go back...")
+        self._distorage()
 
     def _delete_file(self):
         raise NotImplementedError()
