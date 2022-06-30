@@ -157,7 +157,18 @@ class ClientPrompt:
         self._distorage()
 
     def _delete_file(self):
-        raise NotImplementedError()
+        path_in_sys = input("Path in Distorage [leave blank to go back]: ")
+        if not path_in_sys:
+            self._distorage()
+            return
+
+        _, resp, msg = self.session.delete(path_in_sys)
+        if not resp:
+            print(f"Delete failed: {msg}")
+        else:
+            print("Delete successful.")
+        time.sleep(2)
+        self._distorage()
 
     def _distorage(self):
         """

@@ -7,7 +7,7 @@ from __future__ import annotations
 import threading
 import time
 from hashlib import sha1
-from typing import Any, Dict, List, Union
+from typing import Any, Dict, List, Set, Union
 
 import rpyc
 
@@ -80,6 +80,7 @@ class ChordNode:
         self.next: int = -1
         self.elems: Dict[int, Any] = {}
         self.repl_elems: Dict[int, Any] = {}
+        self.removed_elems: Set[int] = set()
         self.run_coroutines()
 
     def log(self, msg):
@@ -274,11 +275,16 @@ class ChordNode:
         succ, resp, _ = self.find_successor(hashed)
         if not resp:
             return new_error_response("Error finding successor")
+
         if succ == self.ip_addr:
             self.log(f"Element {elem_key} if from this node")
-            if hashed in self.elems:
-                return new_response(self.elems[hashed])
-            return new_response(self.repl_elems.get(hashed, None))
+            elem = None
+            if elem_key not in self.removed_elems:
+                if hashed in self.elems:
+                    elem = self.elems[hashed]
+                elem = self.repl_elems.get(hashed, None)
+            return new_response(elem)
+
         self.log(f"Element {elem_key} is not from this node")
         try:
             with DhtSession(succ, self.dht_id) as session:
@@ -287,15 +293,28 @@ class ChordNode:
             return new_error_response(f"Connection error to node {succ}")
 
     def store(
-        self, elem_key: Union[str, int], elem: Any, overwrite: bool = True
+        self,
+        elem_key: Union[str, int],
+        elem: Any,
+        overwrite: bool = True,
+        check_removed: bool = False,
     ) -> VoidResponse:
         """
         Stores an element in the node, previously found.
 
         Parameters
         ----------
-        key : int
+        elem_key : int
             The key of an specific elem in the ring.
+        elem : Any
+            The element to be stored.
+        overwrite : bool
+            Whether to overwrite an existing element.
+        check_removed : bool
+            Whether to check if the element was removed in the past.
+
+            If True, and the element was removed in the past, it will
+            not be stored.
         """
         # Not allowed to store None in the DHT
         if elem is None:
@@ -316,7 +335,14 @@ class ChordNode:
             if not overwrite and hashed in self.elems:
                 self.log(f"Element {elem_name} already exists")
                 return new_error_response("Element already exists")
-            self.elems[hashed] = elem
+
+            was_removed = hashed in self.removed_elems
+            if check_removed and was_removed:
+                self.log(f"Element {elem_name} was removed in the past")
+            else:
+                self.elems[hashed] = elem
+                if was_removed:
+                    self.removed_elems.remove(hashed)
 
             # Store replica of the element in the successor
             try:
@@ -352,3 +378,55 @@ class ChordNode:
         self.log(f"Storing replica of {_get_name(elem_key)}")
         hashed = sha1_hash(elem_key) if isinstance(elem_key, str) else elem_key
         self.repl_elems[hashed] = elem
+
+    def remove(self, elem_key: Union[str, int]):
+        """
+        Removes an element from the node.
+
+        Parameters
+        ----------
+        elem_key : int
+            Key of the element to remove.
+        """
+        hashed = sha1_hash(elem_key) if isinstance(elem_key, str) else elem_key
+        elem_name = _get_name(elem_key)
+
+        # Find the successor of the element
+        succ, resp, _ = self.find_successor(hashed)
+        if not resp:
+            self.log(f"Error finding successor for {elem_name}")
+            return new_error_response("Error finding successor")
+
+        # If the successor is this node, remove the element
+        if succ == self.ip_addr:
+            self.log(f"Removing {elem_name}")
+            self.elems.pop(hashed, None)
+            self.repl_elems.pop(hashed, None)
+            self.removed_elems.add(hashed)
+            try:
+                with DhtSession(self.successor, self.dht_id) as session:
+                    session.remove_replica(elem_key)
+            except ServiceConnectionError:
+                self.log(f"Error removing replica of {elem_name}")
+            return new_void_respone(msg="Element removed")
+
+        # If the successor is not this node, order the successor to remove the element
+        self.log(f"Element {elem_name} is not from this node")
+        try:
+            with DhtSession(succ, self.dht_id) as session:
+                return session.remove(elem_key)
+        except ServiceConnectionError:
+            self.log(f"Connection error to node {succ}")
+            return new_error_response(f"Connection error to node {succ}")
+
+    def remove_replica(self, elem_key: Union[str, int]) -> VoidResponse:
+        """
+        Removes a replica of an element from this node.
+
+        Parameters
+        ----------
+        elem_key : int
+            Key of the element to remove.
+        """
+        hashed = sha1_hash(elem_key) if isinstance(elem_key, str) else elem_key
+        self.repl_elems.pop(hashed, None)

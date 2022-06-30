@@ -158,7 +158,23 @@ class ClientSessionService(rpyc.Service):
         file_name : str
             The name of the file to delete.
         """
-        raise NotImplementedError()
+        data_dht = ServerManager.data_dht()
+        client_dht = ServerManager.clients_dht()
+        elem_key = f"{self.username}:{file_name}"
+
+        # Update client info
+        client_info, resp, msg = client_dht.find(self.username)
+        if not resp:
+            return new_error_response(msg)
+        client_info = json.loads(client_info)
+        client_info["files"].remove(file_name)
+        cli_resp = client_dht.store(
+            self.username, json.dumps(client_info), overwrite=True
+        )
+        if not cli_resp[1]:
+            return cli_resp
+
+        return data_dht.remove(elem_key)
 
     @_ensure_registered
     def exposed_list_files(self) -> Response[List[str]]:
