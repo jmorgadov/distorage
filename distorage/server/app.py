@@ -62,7 +62,12 @@ def _start_host_server(passwd: str):
     clients_dht = ChordNode(host_ip, DhtID.CLIENT)
     data_dht = ChordNode(host_ip, DhtID.DATA)
     ServerManager.setup(host_ip, passwd, clients_dht, data_dht)
-    server = ThreadedServer(ServerSessionService, hostname=host_ip, port=port)
+    server = ThreadedServer(
+        ServerSessionService,
+        hostname=host_ip,
+        port=port,
+        protocol_config={"allow_public_attrs": True},
+    )
     logger.info("Server sessions listener started on %s:%s", host_ip, port)
     ServerManager.server_started = True
     server.start()

@@ -17,6 +17,7 @@ from typing import Any, Union
 
 import rpyc
 
+from distorage.response import VoidResponse, new_void_respone
 from distorage.server import config
 
 
@@ -69,7 +70,7 @@ class ClientSession:
         """Logs in to the server."""
         return self._root.login(self._name, self._pass)
 
-    def upload(self, file_path: str):
+    def upload(self, file_path: str, sys_path: str) -> VoidResponse:
         """
         Uploads a file to the server.
 
@@ -77,12 +78,14 @@ class ClientSession:
         ----------
         file_path : str
             The path of the file to upload.
+        sys_path : str
+            The path of the file in the server.
         """
         with open(file_path, "rb") as file:
             file_data = file.read()
-        self._root.upload(file_data)
+        return self._root.upload(file_data, sys_path)
 
-    def download(self, file_path: str, dest_path: str):
+    def download(self, file_path: str, dest_path: str) -> VoidResponse:
         """
         Downloads a file from the server.
 
@@ -92,10 +95,12 @@ class ClientSession:
             The path of the file in the server.
         dest_path : str
         """
-        file_data = self._root.download(file_path)
+        resp = self._root.download(file_path)
+        if not resp[1]:
+            return resp
         with open(dest_path, "wb") as file:
-            file.write(file_data)
-        return file_data
+            file.write(resp[0])
+        return new_void_respone(msg="File downloaded successfully")
 
     def delete(self, file_name: str):
         """

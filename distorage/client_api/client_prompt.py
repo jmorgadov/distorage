@@ -6,6 +6,7 @@ import os
 import sys
 import time
 from getpass import getpass
+from pathlib import Path
 from typing import Callable, Tuple, Union
 
 from distorage.client_api.session import ClientSession
@@ -89,10 +90,57 @@ class ClientPrompt:
             self._distorage()
 
     def _upload_file(self):
-        raise NotImplementedError()
+        path_str = input("Path to file [leave blank to go back]: ")
+        if not path_str:
+            self._distorage()
+            return
+
+        path = Path(path_str)
+        if not path.exists() or not path.is_file():
+            print("File does not exist.")
+            time.sleep(2)
+            self._distorage()
+            return
+
+        file_name = path.name
+        path_in_sys = input(f"Path in Distorage ['{file_name}' if blank]: ")
+        if not path_in_sys:
+            path_in_sys = file_name
+
+        _, resp, msg = self.session.upload(str(path), path_in_sys)
+        if not resp:
+            print(f"Upload failed: {msg}")
+        else:
+            print("Upload successful.")
+        time.sleep(2)
+        self._distorage()
 
     def _download_file(self):
-        raise NotImplementedError()
+        path_in_sys = input("Path in Distorage [leave blank to go back]: ")
+        if not path_in_sys:
+            self._distorage()
+            return
+
+        file_name = input("File name [leave blank to go back]: ")
+        if not file_name:
+            self._distorage()
+            return
+
+        path = Path(file_name)
+        if path.exists():
+            print("File already exists.")
+            time.sleep(2)
+            self._distorage()
+            return
+
+        path.parent.mkdir(parents=True, exist_ok=True)
+        _, resp, msg = self.session.download(path_in_sys, str(path))
+        if not resp:
+            print(f"Download failed: {msg}")
+        else:
+            print("Download successful.")
+        time.sleep(2)
+        self._distorage()
 
     def _list_files(self):
         raise NotImplementedError()
