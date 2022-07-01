@@ -78,14 +78,58 @@ class ChordNode:
         self.ip_addr = ip_addr
         self.dht_id = dht_id
         self.node_id: int = sha1_hash(ip_addr)
-        self.predecessor: Union[str, None] = None
-        self.successor: str = ip_addr
+        self._predecessor: Union[str, None] = None
+        self._successor: str = ip_addr
         self.fingers: List[str] = [""] * 160
         self.next: int = -1
         self.elems: Dict[int, Any] = {}
         self.repl_elems: Dict[int, Any] = {}
         self.removed_elems: Set[int] = set()
         self.run_coroutines()
+
+    @property
+    def predecessor(self) -> Union[str, None]:
+        """Returns the predecessor node of the node."""
+        return self._predecessor
+
+    @predecessor.setter
+    def predecessor(self, predecessor: Union[str, None]):
+        """
+        Sets the predecessor node of the node.
+
+        Parameters
+        ----------
+        predecessor : str
+            The predecessor node of the node.
+        """
+        self.log(f"Updating predecessor to {predecessor}")
+        self._predecessor = predecessor
+
+        # Move items that can be potentially stored in the new predecessor
+        self._fix_elem_dict()
+        self._update_repl_elements()
+
+    @property
+    def successor(self) -> str:
+        """Returns the successor node of the node."""
+        return self._successor
+
+    @successor.setter
+    def successor(self, successor: str):
+        """
+        Sets the successor node of the node.
+
+        Parameters
+        ----------
+        successor : str
+            The successor node of the node.
+        """
+        self.log(f"Updating successor to {successor}")
+        self._successor = successor
+
+        # Move items that can be potentially stored in the new predecessor
+        self._fix_elem_dict()
+        self._update_repl_elements()
 
     def log(self, msg):
         """
@@ -159,9 +203,7 @@ class ChordNode:
 
         # I'm the successor of the node, so it is my predecessor
         if node_succ == self.ip_addr:
-            self.log(f"Updating predecessor to {node_ip}")
             self.predecessor = node_ip
-            self._fix_elem_dict()
             return new_response(self.ip_addr)
 
         # I'm not the successor of the node, so it will join to other node
@@ -181,7 +223,6 @@ class ChordNode:
                         if pred is not None and _belongs(
                             sha1_hash(pred), self.node_id, sha1_hash(self.successor)
                         ):
-                            self.log(f"Updating successor to {pred}")
                             self.successor = pred
                         session.notify(self.ip_addr)
                 except ServiceConnectionError:
@@ -201,11 +242,7 @@ class ChordNode:
             node_ip != self.predecessor
             and _belongs(sha1_hash(node_ip), sha1_hash(self.predecessor), self.node_id)
         ):
-            self.log(f"Updating predecessor to {node_ip}")
             self.predecessor = node_ip
-
-            # Move items that can be potentially stored in the new predecessor
-            self._fix_elem_dict()
 
     def fix_fingers(self):
         """
