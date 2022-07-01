@@ -308,7 +308,7 @@ class ChordNode:
         path = Path(elem_path)
         if not path.exists() or not path.is_file():
             return None
-        with open(path, "rb") as file:
+        with open(elem_path, "rb") as file:
             return file.read()
 
     def find(self, elem_key: str, is_file: bool = False) -> Response[Any]:
@@ -348,13 +348,14 @@ class ChordNode:
                     elem = self.repl_elems[hashed]
 
                 if is_file and elem is not None:
+                    self.log(f"Loading element {elem} from disk")
                     elem = self._load_element(elem)
             return new_response(elem)
 
         self.log(f"Element {elem_key} is not from this node")
         try:
             with DhtSession(succ, self.dht_id) as session:
-                return session.find(elem_key)
+                return session.find(elem_key, is_file)
         except ServiceConnectionError:
             return new_error_response(f"Connection error to node {succ}")
 
@@ -416,7 +417,7 @@ class ChordNode:
             # Check if the element must be saved in disk
             saved_elem = elem
             if persist_path is not None:
-                self.log(f"Saving {elem_name} in {persist_path}")
+                self.log(f"Writing {elem_name} in {persist_path}")
                 saved_elem = self._save_element(elem, persist_path)
             self.elems[hashed] = saved_elem
 
