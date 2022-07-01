@@ -1,12 +1,9 @@
 #!/bin/bash
 #
-# Runs a temporary server.
+# This script is used to run a temporal container.
 
 CONTAINER_NAME="dist_$(date +%H%M%S_%N)"
 echo "Creating container $CONTAINER_NAME"
 docker run -itd --rm --workdir /app --name $CONTAINER_NAME distorage
-echo "Copying files to container"
-docker cp . $CONTAINER_NAME:/app/
-echo "Starting server. Args: $@"
-docker exec -it $CONTAINER_NAME python main.py server $@
+docker cp . $CONTAINER_NAME:/app
 docker attach $CONTAINER_NAME
