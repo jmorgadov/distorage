@@ -13,11 +13,17 @@ absrtaction allows the implementation of CLI or GUI applications in an easy and
 clean way.
 """
 
+from pathlib import Path
 from typing import Any, List, Union
 
 import rpyc
 
-from distorage.response import Response, VoidResponse, new_void_respone
+from distorage.response import (
+    Response,
+    VoidResponse,
+    new_error_response,
+    new_void_respone,
+)
 from distorage.server import config
 
 
@@ -81,9 +87,13 @@ class ClientSession:
         sys_path : str
             The path of the file in the server.
         """
+        path = Path(file_path)
+        if not path.exists():
+            return new_error_response("File does not exist")
         with open(file_path, "rb") as file:
-            file_data = file.read()
-        return self._root.upload(file_data, sys_path)
+            data = file.read()
+        assert isinstance(data, bytes), "Data is not bytes"
+        return self._root.upload(data, sys_path)
 
     def download(self, file_path: str, dest_path: str) -> VoidResponse:
         """
@@ -98,6 +108,8 @@ class ClientSession:
         resp = self._root.download(file_path)
         if not resp[1]:
             return resp
+        path = Path(dest_path)
+        path.parent.mkdir(parents=True, exist_ok=True)
         with open(dest_path, "wb") as file:
             file.write(resp[0])
         return new_void_respone(msg="File downloaded successfully")

@@ -7,6 +7,7 @@ from __future__ import annotations
 import threading
 import time
 from hashlib import sha1
+from pathlib import Path
 from typing import Any, Dict, List, Set, Union
 
 import rpyc
@@ -233,7 +234,7 @@ class ChordNode:
                 elem = elem_dict.get(elem_key, None)
                 if elem is None:
                     continue
-                _, resp, _ = self.store(elem_key, elem)
+                _, resp, _ = self.store(elem_key, elem, check_removed=True)
             elem_dict.pop(elem_key, None)
 
     def _update_repl_elements(self):
@@ -256,7 +257,21 @@ class ChordNode:
                     self._update_repl_elements()
             time.sleep(config.DHT_CHECK_PREDECESSOR_INTERVAL)
 
-    def find(self, elem_key: str) -> Response[Any]:
+    def _save_element(self, elem: bytes, persist_path: str) -> str:
+        path = Path(persist_path)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with open(path, "wb") as file:
+            file.write(elem)
+        return persist_path
+
+    def _load_element(self, elem_path: str) -> Union[bytes, None]:
+        path = Path(elem_path)
+        if not path.exists() or not path.is_file():
+            return None
+        with open(path, "rb") as file:
+            return file.read()
+
+    def find(self, elem_key: str, is_file: bool = False) -> Response[Any]:
         """
         Gets an element in the node, previously found.
 
@@ -264,13 +279,18 @@ class ChordNode:
         ----------
         elem_key : int
             The key of the element in the ring.
+        from_path : str
+            If given, the element will be loaded from the given path.
         """
         hashed = sha1_hash(elem_key)
 
         # Check in replica items first
         if hashed in self.repl_elems:
             self.log(f"Found element {elem_key} in replica")
-            return new_response(self.repl_elems[hashed])
+            elem = self.repl_elems[hashed]
+            if is_file:
+                elem = self._load_element(elem)
+            return new_response(elem)
 
         succ, resp, _ = self.find_successor(hashed)
         if not resp:
@@ -283,6 +303,9 @@ class ChordNode:
                 if hashed in self.elems:
                     elem = self.elems[hashed]
                 elem = self.repl_elems.get(hashed, None)
+
+                if is_file and elem is not None:
+                    elem = self._load_element(elem)
             return new_response(elem)
 
         self.log(f"Element {elem_key} is not from this node")
@@ -292,12 +315,13 @@ class ChordNode:
         except ServiceConnectionError:
             return new_error_response(f"Connection error to node {succ}")
 
-    def store(
+    def store(  # pylint: disable=too-many-arguments
         self,
         elem_key: Union[str, int],
         elem: Any,
         overwrite: bool = True,
         check_removed: bool = False,
+        persist_path: Union[str, None] = None,
     ) -> VoidResponse:
         """
         Stores an element in the node, previously found.
@@ -315,6 +339,8 @@ class ChordNode:
 
             If True, and the element was removed in the past, it will
             not be stored.
+        persist_path : str
+            If not None, the element will be stored in the given path.
         """
         # Not allowed to store None in the DHT
         if elem is None:
@@ -340,14 +366,20 @@ class ChordNode:
             if check_removed and was_removed:
                 self.log(f"Element {elem_name} was removed in the past")
             else:
-                self.elems[hashed] = elem
+                saved_elem = elem
+                if persist_path is not None:
+                    self.log(f"Saving {elem_name} in {persist_path}")
+                    saved_elem = self._save_element(elem, persist_path)
+                self.elems[hashed] = saved_elem
+
+                # Element is back in the system so update the removed set
                 if was_removed:
                     self.removed_elems.remove(hashed)
 
             # Store replica of the element in the successor
             try:
                 with DhtSession(self.successor, self.dht_id) as session:
-                    session.store_replica(elem_key, elem)
+                    session.store_replica(elem_key, elem, persist_path)
             except ServiceConnectionError:
                 self.log(f"Error storing replica of {elem_name}")
             return new_void_respone(msg="Element stored")
@@ -356,7 +388,9 @@ class ChordNode:
         self.log(f"Element {elem_name} is not from this node")
         try:
             with DhtSession(succ, self.dht_id) as session:
-                store_resp = session.store(elem_key, elem, overwrite)
+                store_resp = session.store(
+                    elem_key, elem, overwrite, check_removed, persist_path
+                )
                 if store_resp[1]:
                     self.log(f"{elem_name} stored in {store_resp[0]}")
                 else:
@@ -366,7 +400,12 @@ class ChordNode:
             self.log(f"Connection error to node {succ}")
             return new_error_response(f"Connection error to node {succ}")
 
-    def store_replica(self, elem_key: Union[str, int], elem: Any):
+    def store_replica(
+        self,
+        elem_key: Union[str, int],
+        elem: Any,
+        persist_path: Union[str, None] = None,
+    ) -> VoidResponse:
         """
         Stores a replica of an element in this node.
 
@@ -377,7 +416,10 @@ class ChordNode:
         """
         self.log(f"Storing replica of {_get_name(elem_key)}")
         hashed = sha1_hash(elem_key) if isinstance(elem_key, str) else elem_key
+        if persist_path is not None:
+            elem = self._save_element(elem, persist_path)
         self.repl_elems[hashed] = elem
+        return new_void_respone(msg="Replica stored")
 
     def remove(self, elem_key: Union[str, int]):
         """
@@ -430,3 +472,4 @@ class ChordNode:
         """
         hashed = sha1_hash(elem_key) if isinstance(elem_key, str) else elem_key
         self.repl_elems.pop(hashed, None)
+        return new_void_respone(msg="Replica removed")

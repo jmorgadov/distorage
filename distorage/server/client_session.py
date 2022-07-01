@@ -93,7 +93,7 @@ class ClientSessionService(rpyc.Service):
         return new_void_respone()
 
     @_ensure_registered
-    def exposed_upload(self, file: List[bytes], sys_path: str) -> VoidResponse:
+    def exposed_upload(self, file: bytes, sys_path: str) -> VoidResponse:
         """
         Uploads a file.
 
@@ -125,7 +125,9 @@ class ClientSessionService(rpyc.Service):
         )
         if not cli_resp[1]:
             return cli_resp
-        return data_dht.store(elem_key, elem_val, overwrite=False)
+        return data_dht.store(
+            elem_key, elem_val, persist_path=f"{self.username}/{sys_path}"
+        )
 
     @_ensure_registered
     def exposed_download(self, file_name: str) -> Response[Any]:
@@ -146,7 +148,7 @@ class ClientSessionService(rpyc.Service):
         """
         data_dht = ServerManager.data_dht()
         elem_key = f"{self.username}:{file_name}"
-        return data_dht.find(elem_key)
+        return data_dht.find(elem_key, is_file=True)
 
     @_ensure_registered
     def exposed_delete(self, file_name: str):

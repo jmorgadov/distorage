@@ -84,21 +84,28 @@ class DhtSessionService(rpyc.Service):
         self.node.notify(node_ip)
 
     @_ensure_registered
-    def exposed_find(self, elem_key: str) -> Response[Any]:
+    def exposed_find(self, elem_key: str, is_file: bool = False) -> Response[Any]:
         """Find an element in the DHT."""
-        return self.node.find(elem_key)
+        return self.node.find(elem_key, is_file)
 
     @_ensure_registered
-    def exposed_store(
-        self, elem_key: str, elem: Any, overwrite: bool = True
+    def exposed_store(  # pylint: disable=too-many-arguments
+        self,
+        elem_key: str,
+        elem: Any,
+        overwrite: bool = True,
+        check_removed: bool = False,
+        persist_path: Union[str, None] = None,
     ) -> VoidResponse:
         """Store an element in the DHT."""
-        return self.node.store(elem_key, elem, overwrite)
+        return self.node.store(elem_key, elem, overwrite, check_removed, persist_path)
 
     @_ensure_registered
-    def exposed_store_replica(self, elem_key: str, elem: Any):
+    def exposed_store_replica(
+        self, elem_key: str, elem: Any, persist_path: Union[str, None] = None
+    ) -> VoidResponse:
         """Store a replica of an element in the node."""
-        self.node.store_replica(elem_key, elem)
+        return self.node.store_replica(elem_key, elem, persist_path)
 
     @_ensure_registered
     def exposed_remove(self, elem_key: str) -> VoidResponse:
