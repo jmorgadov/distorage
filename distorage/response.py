@@ -17,7 +17,7 @@ def new_response(data: T, success: bool = True, msg: str = "") -> Response[T]:
     return data, success, msg
 
 
-def new_void_respone(success: bool = True, msg: str = "") -> VoidResponse:
+def new_void_response(success: bool = True, msg: str = "") -> VoidResponse:
     """
     A generic void response.
     """

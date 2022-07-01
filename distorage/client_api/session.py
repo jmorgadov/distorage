@@ -22,7 +22,7 @@ from distorage.response import (
     Response,
     VoidResponse,
     new_error_response,
-    new_void_respone,
+    new_void_response,
 )
 from distorage.server import config
 
@@ -112,7 +112,7 @@ class ClientSession:
         path.parent.mkdir(parents=True, exist_ok=True)
         with open(dest_path, "wb") as file:
             file.write(resp[0])
-        return new_void_respone(msg="File downloaded successfully")
+        return new_void_response(msg="File downloaded successfully")
 
     def delete(self, file_name: str):
         """

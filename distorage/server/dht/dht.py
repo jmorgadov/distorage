@@ -19,11 +19,14 @@ from distorage.response import (
     VoidResponse,
     new_error_response,
     new_response,
-    new_void_respone,
+    new_void_response,
 )
 from distorage.server import config
 from distorage.server.dht.dht_id_enum import DhtID
 from distorage.server.dht.dht_session import DhtSession
+
+# pylint: disable=too-many-arguments
+# pylint: disable=too-many-return-statements
 
 
 def _belongs(value: int, lower: int, upper: int) -> bool:
@@ -301,8 +304,11 @@ class ChordNode:
             elem = None
             if elem_key not in self.removed_elems:
                 if hashed in self.elems:
+                    self.log(f"Found element {elem_key} in local storage")
                     elem = self.elems[hashed]
-                elem = self.repl_elems.get(hashed, None)
+                elif hashed in self.repl_elems:
+                    self.log(f"Found element {elem_key} in replica")
+                    elem = self.repl_elems[hashed]
 
                 if is_file and elem is not None:
                     elem = self._load_element(elem)
@@ -315,7 +321,7 @@ class ChordNode:
         except ServiceConnectionError:
             return new_error_response(f"Connection error to node {succ}")
 
-    def store(  # pylint: disable=too-many-arguments
+    def store(
         self,
         elem_key: Union[str, int],
         elem: Any,
@@ -355,26 +361,31 @@ class ChordNode:
             self.log(f"Error finding successor for {elem_name}")
             return new_error_response("Error finding successor")
 
-        # If the successor is this node, store the element
+        # If the successor is this node, store the element here
         if succ == self.ip_addr:
             self.log(f"Storing {elem_name} in {elem_key}")
+
+            # Check if the element already exists and overwrite is not allowed
             if not overwrite and hashed in self.elems:
                 self.log(f"Element {elem_name} already exists")
                 return new_error_response("Element already exists")
 
+            # Check if the element was removed in the past
             was_removed = hashed in self.removed_elems
             if check_removed and was_removed:
                 self.log(f"Element {elem_name} was removed in the past")
-            else:
-                saved_elem = elem
-                if persist_path is not None:
-                    self.log(f"Saving {elem_name} in {persist_path}")
-                    saved_elem = self._save_element(elem, persist_path)
-                self.elems[hashed] = saved_elem
+                return new_void_response(msg="Element was removed in the past")
 
-                # Element is back in the system so update the removed set
-                if was_removed:
-                    self.removed_elems.remove(hashed)
+            # Check if the element must be saved in disk
+            saved_elem = elem
+            if persist_path is not None:
+                self.log(f"Saving {elem_name} in {persist_path}")
+                saved_elem = self._save_element(elem, persist_path)
+            self.elems[hashed] = saved_elem
+
+            # Element is back in the system so update the removed set
+            if was_removed:
+                self.removed_elems.remove(hashed)
 
             # Store replica of the element in the successor
             try:
@@ -382,7 +393,7 @@ class ChordNode:
                     session.store_replica(elem_key, elem, persist_path)
             except ServiceConnectionError:
                 self.log(f"Error storing replica of {elem_name}")
-            return new_void_respone(msg="Element stored")
+            return new_void_response(msg="Element stored")
 
         # If the successor is not this node, order the successor to store the element
         self.log(f"Element {elem_name} is not from this node")
@@ -391,9 +402,7 @@ class ChordNode:
                 store_resp = session.store(
                     elem_key, elem, overwrite, check_removed, persist_path
                 )
-                if store_resp[1]:
-                    self.log(f"{elem_name} stored in {store_resp[0]}")
-                else:
+                if not store_resp[1]:
                     self.log(f"Error storing {elem_name}")
                 return store_resp
         except ServiceConnectionError:
@@ -419,7 +428,7 @@ class ChordNode:
         if persist_path is not None:
             elem = self._save_element(elem, persist_path)
         self.repl_elems[hashed] = elem
-        return new_void_respone(msg="Replica stored")
+        return new_void_response(msg="Replica stored")
 
     def remove(self, elem_key: Union[str, int]):
         """
@@ -450,7 +459,7 @@ class ChordNode:
                     session.remove_replica(elem_key)
             except ServiceConnectionError:
                 self.log(f"Error removing replica of {elem_name}")
-            return new_void_respone(msg="Element removed")
+            return new_void_response(msg="Element removed")
 
         # If the successor is not this node, order the successor to remove the element
         self.log(f"Element {elem_name} is not from this node")
@@ -472,4 +481,4 @@ class ChordNode:
         """
         hashed = sha1_hash(elem_key) if isinstance(elem_key, str) else elem_key
         self.repl_elems.pop(hashed, None)
-        return new_void_respone(msg="Replica removed")
+        return new_void_response(msg="Replica removed")

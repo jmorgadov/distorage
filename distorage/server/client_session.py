@@ -14,7 +14,7 @@ from distorage.response import (
     VoidResponse,
     new_error_response,
     new_response,
-    new_void_respone,
+    new_void_response,
 )
 from distorage.server.server_manager import ServerManager
 
@@ -90,7 +90,7 @@ class ClientSessionService(rpyc.Service):
             return new_error_response("Wrong password")
         self._username = username
         self._passwd = password
-        return new_void_respone()
+        return new_void_response()
 
     @_ensure_registered
     def exposed_upload(self, file: bytes, sys_path: str) -> VoidResponse:
