@@ -18,6 +18,7 @@ class ServerManager:
     """Manages the server sessions."""
 
     knwon_servers: Dict[str, Any] = {}
+    old_known_servers: Dict[str, Any] = {}
     host_ip: str = ""
     passwd: str = ""
     server_started: bool = False
@@ -111,14 +112,26 @@ class ServerManager:
         if server_ip not in ServerManager.knwon_servers:
             return False
 
-        info = ServerManager.knwon_servers[server_ip]
-        last_active: datetime = info["last_active"]
-        if last_active is None:
+        if server_ip in ServerManager.knwon_servers:
+            info = ServerManager.knwon_servers[server_ip]
+            last_active = info["last_active"]
+            if last_active is not None:
+                now = datetime.now()
+                if (now - last_active).total_seconds() > config.DISCOVER_TIMEOUT:
+                    logger.info("Server %s is no longer active", server_ip)
+                    ServerManager.old_known_servers[
+                        server_ip
+                    ] = ServerManager.knwon_servers.pop(server_ip)
+                    return True
             return False
-
-        now = datetime.now()
-        if (now - last_active).total_seconds() > config.DISCOVER_TIMEOUT:
-            logger.info("Server %s is no longer active", server_ip)
-            ServerManager.knwon_servers.pop(server_ip)
-            return True
+        if server_ip in ServerManager.old_known_servers:
+            info = ServerManager.old_known_servers[server_ip]
+            last_active = info["last_active"]
+            if last_active is not None:
+                now = datetime.now()
+                if (now - last_active).total_seconds() > config.OLD_SERVERS_TIMEOUT:
+                    logger.info("Server %s is no longer active", server_ip)
+                    ServerManager.old_known_servers.pop(server_ip)
+                    return True
+            return False
         return False

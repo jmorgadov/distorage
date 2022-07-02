@@ -103,6 +103,27 @@ def start_host_server(passwd: str):
     asyncio.run(start_dht_services())
 
 
+def check_old_servers():
+    """Checks if the old servers are still alive."""
+    while True:
+        time.sleep(config.CHECK_OLD_SERVERS_INTERVAL)
+        if not ServerManager.server_started:
+            continue
+        logger.debug("Checking old servers...")
+        old_servers = list(ServerManager.old_known_servers.keys())
+        for old_ip in old_servers:
+            # Check if the server hasn't been active for a while
+            if ServerManager.check_server_timeout(old_ip):
+                continue
+
+            # Check if the server is still alive
+            try:
+                with ServerSession(old_ip, ServerManager.passwd) as _:
+                    ServerManager.old_known_servers.pop(old_ip)
+            except:  # pylint: disable=bare-except
+                pass
+
+
 def discover_servers_routine():
     """Discovers the servers in the network."""
     while True:
@@ -173,11 +194,14 @@ def check_dht_successor():
 def run_coroutines():
     """Runs all the system coroutines."""
     thr_1 = threading.Thread(target=discover_servers_routine)
-    thr_2 = threading.Thread(target=check_dht_successor)
+    thr_2 = threading.Thread(target=check_old_servers)
+    thr_3 = threading.Thread(target=check_dht_successor)
     thr_1.start()
     thr_2.start()
+    thr_3.start()
     thr_1.join()
     thr_2.join()
+    thr_3.join()
 
 
 def setup_new_system(passwd: Union[str, None] = None):
