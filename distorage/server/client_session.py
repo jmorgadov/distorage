@@ -146,6 +146,17 @@ class ClientSessionService(rpyc.Service):
         List[bytes]
             The file if the download was successful.
         """
+        # Check if user has the file
+        client_dht = ServerManager.clients_dht()
+        val, resp, msg = client_dht.find(self.username)
+        if not resp:
+            return new_error_response(msg)
+        client_info = json.loads(val)
+        sys_path = f"{self.username}/{file_name}"
+        if sys_path not in client_info["files"]:
+            return new_error_response("File not found")
+
+        # Look for the file in the data dht
         data_dht = ServerManager.data_dht()
         elem_key = f"{self.username}:{file_name}"
         return data_dht.find(elem_key, is_file=True)
