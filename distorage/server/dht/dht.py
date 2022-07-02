@@ -4,6 +4,7 @@ Contains a Distribute Hash Table implementation using CHORD protocol.
 
 from __future__ import annotations
 
+import os
 import threading
 import time
 from hashlib import sha1
@@ -52,6 +53,14 @@ def _get_name(elem_key):
     if len(elem_name) > 13:
         elem_name = f"{elem_name[:5]}...{elem_name[-5:]}"
     return elem_name
+
+
+def _is_path(value) -> bool:
+    try:
+        path = Path(value)
+        return path.exists() and path.is_file()
+    except Exception:  # pylint: disable=broad-except
+        return False
 
 
 def sha1_hash(value: str) -> int:
@@ -256,6 +265,20 @@ class ChordNode:
             self.fingers[self.next] = "" if not resp else succ
             time.sleep(config.DHT_FIX_FINGERS_INTERVAL)
 
+    def _clean_dict(
+        self, elem_dict: Dict[int, Any], elem_keys: Union[List[int], None] = None
+    ) -> None:
+        """
+        Removes all the elements that are not in the finger table.
+        """
+        if elem_keys is None:
+            elem_keys = list(elem_dict.keys())
+        for k in elem_keys:
+            val = elem_dict[k]
+            if _is_path(val):
+                os.remove(val)
+            elem_dict.pop(k)
+
     def _fix_elem_dict(self):
         """Checks if there are elements that don't belong here."""
         if self.predecessor is None:
@@ -274,11 +297,20 @@ class ChordNode:
                 elem = elem_dict.get(elem_key, None)
                 if elem is None:
                     continue
-                _, resp, _ = self.store(elem_key, elem, check_removed=True)
+                if _is_path(elem):
+                    with open(elem, "rb") as file:
+                        file_bytes = file.read()
+                    _, resp, _ = self.store(
+                        elem_key, file_bytes, check_removed=True, persist_path=elem
+                    )
+                    if resp:
+                        os.remove(elem)
+                else:
+                    _, resp, _ = self.store(elem_key, elem, check_removed=True)
             elem_dict.pop(elem_key, None)
 
     def _update_repl_elements(self):
-        """Updates the replica elements position in the ring."""
+        """Updates moves all the replica elements to the new successor."""
         self.log("Updating replica elements")
         keys = list(self.repl_elems.keys())
         if keys:
