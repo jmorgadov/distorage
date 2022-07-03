@@ -53,7 +53,6 @@ class ClientSession:
         while True:
             try:
                 self._conn.root.ping()
-                servers_on = self._conn.root.avaiable_servers()
                 return self._conn.root
             except:
                 serv = servers_on[randint(0, len(servers_on)-1)]
