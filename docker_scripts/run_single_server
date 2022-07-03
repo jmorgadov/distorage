@@ -4,7 +4,7 @@
 
 CONTAINER_NAME="dist_$(date +%H%M%S_%N)"
 echo "Creating container $CONTAINER_NAME"
-docker run -itd --rm --workdir /app --name $CONTAINER_NAME distorage
+docker run -itd --rm --workdir /app --name $CONTAINER_NAME --env PYTHONHASHSEED=0 distorage
 echo "Copying files to container"
 docker cp . $CONTAINER_NAME:/app/
 echo "Starting server. Args: $@"
