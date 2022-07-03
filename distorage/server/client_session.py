@@ -52,8 +52,8 @@ class ClientSessionService(rpyc.Service):
         """Checks whether te server is working or not"""
         return
 
-    def avaiable_servers()-> List:
-        """Returns the aviables servers on ServerManager."""
+    def available_servers()-> List:
+        """Returns the availables servers on ServerManager."""
         return list(ServerManager.knwon_servers.keys())
 
     def exposed_register(self, username: str, password: str) -> VoidResponse:
