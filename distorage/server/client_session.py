@@ -5,7 +5,7 @@ This rpyc service is responsible for managing client sessions on the server.
 """
 
 import json
-from typing import Any, List, Union, Tuple
+from typing import Any, List, Union
 
 import rpyc
 
@@ -48,13 +48,13 @@ class ClientSessionService(rpyc.Service):
         assert self._passwd is not None, "Not logged in"
         return self._passwd
 
-    def ping():
+    def exposed_ping(self):
         """Checks whether te server is working or not"""
         return
 
-    def available_servers()-> List:
+    def exposed_available_servers(self) -> Response[List[str]]:
         """Returns the availables servers on ServerManager."""
-        return list(ServerManager.knwon_servers.keys())
+        return new_response(list(ServerManager.knwon_servers.keys()))
 
     def exposed_register(self, username: str, password: str) -> VoidResponse:
         """

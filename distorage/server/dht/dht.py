@@ -265,20 +265,6 @@ class ChordNode:
             self.fingers[self.next] = "" if not resp else succ
             time.sleep(config.DHT_FIX_FINGERS_INTERVAL)
 
-    def _clean_dict(
-        self, elem_dict: Dict[int, Any], elem_keys: Union[List[int], None] = None
-    ) -> None:
-        """
-        Removes all the elements that are not in the finger table.
-        """
-        if elem_keys is None:
-            elem_keys = list(elem_dict.keys())
-        for k in elem_keys:
-            val = elem_dict[k]
-            if _is_path(val):
-                os.remove(val)
-            elem_dict.pop(k)
-
     def _fix_elem_dict(self):
         """Checks if there are elements that don't belong here."""
         if self.predecessor is None:
@@ -459,8 +445,9 @@ class ChordNode:
 
             # Store replica of the element in the successor
             try:
-                with DhtSession(self.successor, self.dht_id) as session:
-                    session.store_replica(elem_key, elem, persist_path)
+                if self.successor != self.ip_addr:
+                    with DhtSession(self.successor, self.dht_id) as session:
+                        session.store_replica(elem_key, elem, persist_path)
             except ServiceConnectionError:
                 self.log(f"Error storing replica of {elem_name}")
             return new_void_response(msg="Element stored")

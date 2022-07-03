@@ -14,7 +14,6 @@ clean way.
 """
 
 from pathlib import Path
-from random import randint
 from typing import Any, List, Union
 
 import rpyc
@@ -27,8 +26,6 @@ from distorage.response import (
 )
 from distorage.server import config
 
-
-servers_on = []
 
 class ClientSession:
     """
@@ -45,19 +42,32 @@ class ClientSession:
     def __init__(self, username: str, password: str):
         self._name = username
         self._pass = password
+        self._loged_in = False
+        self.servers_on: List[str] = []
         self._conn: Union[rpyc.Connection, None] = None
 
     @property
     def _root(self) -> Any:
-        global servers_on
+        assert (
+            self._conn is not None and self._conn.root is not None
+        ), "Connection hasen't been created"
+        new_server = None
         while True:
             try:
-                self._conn.root.ping()
+                if new_server is not None:
+                    self.connect(new_server)
+                    if self._loged_in:
+                        resp = self._conn.root.login(self._name, self._pass)
+                        assert resp[1], "Re-login failed"
+                else:
+                    assert self._conn is not None and self._conn.root is not None
+                    self._conn.root.ping()
                 return self._conn.root
-            except:
-                serv = servers_on[randint(0, len(servers_on)-1)]
-                self.connect(serv)
-
+            except:  # pylint: disable=bare-except
+                if not self.servers_on:
+                    break
+                new_server = self.servers_on.pop()
+        raise Exception("No server available")
 
     def connect(self, ip_addr: str):
         """
@@ -69,21 +79,31 @@ class ClientSession:
             The IP address of the server.
         """
         self._conn = rpyc.connect(ip_addr, config.CLIENT_PORT)
+        assert self._conn is not None and self._conn.root is not None
+        servers, _, _ = self._conn.root.available_servers()
+        new_servers = [s for s in servers if s not in self.servers_on]
+        self.servers_on = new_servers + self.servers_on
 
     def disconnect(self):
         """Disconnects from the server."""
         if self._conn is not None:
             self._conn.close()
             self._conn = None
+            self._loged_in = False
 
     def register(self):
         """Register to the system as a new user."""
-        self._root.avaiable_servers()
-        return self._root.register(self._name, self._pass)
+        resp = self._root.register(self._name, self._pass)
+        if resp[1]:
+            self._loged_in = True
+        return resp
 
     def login(self):
         """Logs in to the server."""
-        return self._root.login(self._name, self._pass)
+        resp = self._root.login(self._name, self._pass)
+        if resp[1]:
+            self._loged_in = True
+        return resp
 
     def upload(self, file_path: str, sys_path: str) -> VoidResponse:
         """
