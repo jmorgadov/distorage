@@ -14,6 +14,7 @@ clean way.
 """
 
 from pathlib import Path
+from random import randint
 from typing import Any, List, Union
 
 import rpyc
@@ -26,6 +27,8 @@ from distorage.response import (
 )
 from distorage.server import config
 
+
+servers_on = []
 
 class ClientSession:
     """
@@ -46,10 +49,16 @@ class ClientSession:
 
     @property
     def _root(self) -> Any:
-        assert (
-            self._conn is not None and self._conn.root is not None
-        ), "Not connected to server"
-        return self._conn.root
+        global servers_on
+        while True:
+            try:
+                self._conn.root.ping()
+                servers_on = self._conn.root.avaiable_servers()
+                return self._conn.root
+            except:
+                serv = servers_on[randint(0, len(servers_on)-1)]
+                self.connect(serv)
+
 
     def connect(self, ip_addr: str):
         """
@@ -70,6 +79,7 @@ class ClientSession:
 
     def register(self):
         """Register to the system as a new user."""
+        self._root.avaiable_servers()
         return self._root.register(self._name, self._pass)
 
     def login(self):

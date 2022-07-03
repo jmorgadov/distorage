@@ -48,7 +48,15 @@ class ClientSessionService(rpyc.Service):
         assert self._passwd is not None, "Not logged in"
         return self._passwd
 
-    def exposed_register(self, username: str, password: str) -> Tuple[VoidResponse, List]:
+    def ping():
+        """Checks whether te server is working or not"""
+        return list(ServerManager.knwon_servers.keys())
+
+    def avaiable_servers()-> List:
+        """Returns the aviables servers on ServerManager."""
+        return list(ServerManager.knwon_servers.keys())
+
+    def exposed_register(self, username: str, password: str) -> VoidResponse:
         """
         Registers a new user.
 
@@ -68,7 +76,7 @@ class ClientSessionService(rpyc.Service):
         if resp[1]:
             self._username = username
             self._passwd = password
-        return resp, list(ServerManager.knwon_servers.keys())
+        return resp
 
     def exposed_login(self, username: str, password: str) -> VoidResponse:
         """
