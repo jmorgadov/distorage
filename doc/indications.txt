@@ -1,0 +1,62 @@
+El proyecto consta de varias etapas para su ejecución, las cuales se dividen en:
+    * Inicio de servidores.
+    * Crear sesiones de clientes.
+    * Flujo de trabajo con docker.
+
+CREACIÓN DE SERVIDORES:
+    Ejecutar:
+
+        python main.py server [COMMAND] [ARGS]
+
+    Donde COMMAND sería:
+
+    * new [PASSWORD]
+        Inicia un nuevo servicio.
+    
+    * discover [PASSWORD]
+        Busca otros servidores en la red local.
+    
+    * connect [IP_ADDR] [PASSWORD]
+        Conecta el servidor a una dirección IP específica.
+
+    - El argumento [PASSWORD] se puede omitir, en ese caso este será pedido posteriormente.
+
+
+CONECTAR UN CLIENTE:
+    Ejecutar:
+
+        python main.py client
+
+    Al entrar como cliente, se pedirá un nombre y contraseña, si es primera vez se podrán rellenar los campos como quiera.
+    Luego se podrá registrar (o loguear) usando esas credenciales.
+
+    Una vez ya en el sistema se podrá descargar, subir, borrar o listar los archivos que posee en el sistema
+
+FLUJO DE TRABAJO DE DOCKER:
+
+    *Construir la imagen de docker:
+
+        docker build --tag distorage
+    
+    *Ejecutar un servidor:
+
+        ./docker_scripts/run_single_server [COMMAND] [ARGS]
+    
+    *Ejecutar varios servidores a la vez:
+
+        ./docker_scripts/run_servers [COUNT] [PASSWORD] [TERMINAL]
+    
+        - Donde:
+
+            *COUNT: Es el número de servidores a iniciar.
+
+            *PASSWORD: La contraseña del sistema de servidores.
+
+            *TERMINAL: El tipo de emulador de consola en el OS(por defecto es alacritty) 
+
+    *Ejecutar un contenedor temporal
+
+        ./docker_scripts/temp_container
+
+        -Util para iniciar clientes y servidores manualmente.
+
