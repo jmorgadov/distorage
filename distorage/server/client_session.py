@@ -50,7 +50,7 @@ class ClientSessionService(rpyc.Service):
 
     def ping():
         """Checks whether te server is working or not"""
-        return list(ServerManager.knwon_servers.keys())
+        return
 
     def avaiable_servers()-> List:
         """Returns the aviables servers on ServerManager."""
