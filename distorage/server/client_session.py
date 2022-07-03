@@ -5,7 +5,7 @@ This rpyc service is responsible for managing client sessions on the server.
 """
 
 import json
-from typing import Any, List, Union
+from typing import Any, List, Union, Tuple
 
 import rpyc
 
@@ -48,7 +48,7 @@ class ClientSessionService(rpyc.Service):
         assert self._passwd is not None, "Not logged in"
         return self._passwd
 
-    def exposed_register(self, username: str, password: str) -> VoidResponse:
+    def exposed_register(self, username: str, password: str) -> Tuple[VoidResponse, List]:
         """
         Registers a new user.
 
@@ -68,7 +68,7 @@ class ClientSessionService(rpyc.Service):
         if resp[1]:
             self._username = username
             self._passwd = password
-        return resp
+        return resp, list(ServerManager.knwon_servers.keys())
 
     def exposed_login(self, username: str, password: str) -> VoidResponse:
         """

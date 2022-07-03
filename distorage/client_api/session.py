@@ -108,7 +108,7 @@ class ClientSession:
         resp = self._root.download(file_path)
         if not resp[1]:
             return resp
-        if not resp[0]:
+        if resp[0] is None:
             return new_error_response(msg=f"File {file_path} does not exist")
         path = Path(dest_path)
         path.parent.mkdir(parents=True, exist_ok=True)
