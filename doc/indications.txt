@@ -32,11 +32,16 @@ Donde:
 En este caso se ejecutan la cantidad de servidores especificada, donde el primero se crea con el comando new y
 los demas con el comando discover, los cuales trataran buscaran en la red y conectarse entre ellos.
 
--Ejecutar un contenedor temporal
+-Ejecutar un contenedor temporal:
 
     ./docker_scripts/temp_container
 
 Permite iniciar clientes y servidores manualmente.
+
+-Ejecutar un cliente:
+
+    ./docker_scripts/run_client
+
 
 2- CREACIÓN DE SERVIDORES:
 Ejecutar:
@@ -58,7 +63,8 @@ Donde COMMAND sería:
 
 El argumento [PASSWORD] se puede omitir, en ese caso este será pedido posteriormente.
 
-3-CONECTAR UN CLIENTE:
+
+3- CONECTAR UN CLIENTE:
 Ejecutar:
 
     python main.py client
