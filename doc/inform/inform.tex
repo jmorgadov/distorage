@@ -1,0 +1,74 @@
+\documentclass[12pt]{article}
+\usepackage[utf8]{inputenc}
+\usepackage{manfnt}
+\usepackage{amsfonts}
+\usepackage[margin=2cm]{geometry}
+\usepackage[spanish]{babel}
+\usepackage{graphicx}
+\usepackage{fancyhdr}
+\usepackage{amsmath}
+\usepackage{shortvrb}
+\usepackage{amssymb}
+\usepackage{amsthm}
+\usepackage[T1]{fontenc}
+
+\begin{document}
+	\title{Proyecto Sistemas Distribuidos\\Sistema de Almacenamiento Distribuido}
+	\author{Jorge J. Morgado Vega\\Roberto García Rodríguez}
+	\date{}
+	\maketitle
+
+    \section{Introducción}
+        Un sistema de almacenamiento distribuido es un sistema de almacenamiento
+        que se distribuye en varios nodos, cada uno de los cuales tiene una
+        partición de almacenamiento, balanceando la carga de trabajo entre los
+        nodos o servidores.
+
+        En este trabajo se propone la idea general de un sistema de almacenamiento
+        no centralizado, repartido por la red, cumpliendo las mismas funcionalidades
+        que los sistemas estandar.
+
+    \section{Implementación}
+        Se desarrolló el proyecto haciendo uso del lenguaje \textbf{Python}
+        y la plataforma \textbf{Docker}.
+
+    \subsection{Protocolo CHORD}
+        Para la distribución de los recursos en la red se hizo una
+        implementación del Protocolo CHORD, el cual brinda mecanismo y funciones
+        para la gestión de los recursos en la red, distribuyendo entre los
+        servidores del sistema la carga de trabajo.
+
+        Dicho protocolo no cuenta con un mecanismo de replicación de
+        recursos, por lo tanto, la caida de un servidor de la red provocaba
+        una perdida de los recursos que este poseía.
+
+        Se implementó entonces un modelo de replicación que duplicada los
+        recursos en la red, de tal forma (con cierto nivel de tolerancia a
+        fallas) que el sistema puede mantener la consistencia y proveer la
+        totalidad de los recursos incluso cuando existan servidores fuera
+        del sistema.
+
+    \subsection{Conexión}
+        Para la conexión con los servidores se utilizó el protocolo TCP/IP,
+        usando la biblioteca \emph{rpyc} para los llamados remotos en la red y
+        la utilización de los servicios y mecanismo que posee para realizar la
+        conexión entre dos puntos de la red.
+
+    \section{API}
+        Se provee de una API que sirva de enlace entre el usuario y el sistema,
+        la cual se encarga de envía a los servidores los pedidos realizados por
+        el usuario. La API del sistema de almacenamiento distribuido contiene
+        una serie de funciones que permiten realizar las operaciones de
+        almacenamiento y consulta.
+
+    \section{Aplicación}
+
+        Se diseñó un Terminal User Interface en la cual se le brinda al usuario
+        una interfaz con la cual puede acceder al sistema y realizar todas las
+        operaciones disponibles (subir, descargar, eliminar y listar archivos del
+        sistema).
+        Debido a la existencia de una API para el sistema, se puede crear
+        cualquier tipo de interfaz de usuario sin la necesidad de una implementación
+        extra, solo usar los recursos que esta brinda.
+
+\end{document}
