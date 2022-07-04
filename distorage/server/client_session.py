@@ -160,8 +160,7 @@ class ClientSessionService(rpyc.Service):
         if not resp:
             return new_error_response(msg)
         client_info = json.loads(val)
-        sys_path = f"{self.username}/{file_name}"
-        if sys_path not in client_info["files"]:
+        if file_name not in client_info["files"]:
             return new_error_response("File not found")
 
         # Look for the file in the data dht

@@ -111,8 +111,19 @@ class ChordNode:
         predecessor : str
             The predecessor node of the node.
         """
+        if predecessor == self._predecessor:
+            return
+
+        if predecessor is None:
+            for key, val in self.repl_elems.items():
+                self.elems[key] = val
+            self.repl_elems = {}
+
         self.log(f"Updating predecessor to {predecessor}")
         self._predecessor = predecessor
+
+        if predecessor is None:
+            return
 
         # Move items that can be potentially stored in the new predecessor
         self._fix_elem_dict()
@@ -133,12 +144,23 @@ class ChordNode:
         successor : str
             The successor node of the node.
         """
+        if successor == self._successor:
+            return
+
+        if successor == self.ip_addr:
+            for key, val in self.repl_elems.items():
+                self.elems[key] = val
+            self.repl_elems = {}
+
         self.log(f"Updating successor to {successor}")
         self._successor = successor
 
+        if successor == self.ip_addr:
+            return
+
         # Move items that can be potentially stored in the new predecessor
         self._fix_elem_dict()
-        self._update_repl_elements()
+        self._resend_replica_to_successor()
 
     def log(self, msg):
         """
@@ -301,6 +323,27 @@ class ChordNode:
         keys = list(self.repl_elems.keys())
         if keys:
             self._update_elements(keys, self.repl_elems)
+
+    def _resend_replica_to_successor(self):
+        """Resends all the elements as replica to the successor."""
+        self.log("Resending elements to successor")
+        keys = list(self.elems.keys())
+        for key in keys:
+            try:
+                with DhtSession(self.successor, self.dht_id) as session:
+                    val = self.elems.get(key, None)
+                    if val is None:
+                        continue
+                    path = _is_path(val)
+                    if path is not None:
+                        with open(path, "rb") as file:
+                            file_bytes = file.read()
+                        session.store_replica(key, file_bytes, persist_path=val)
+                    else:
+                        session.store_replica(key, val)
+            except ServiceConnectionError:
+                self.log(f"Failed to send element {key} to successor")
+                continue
 
     def check_predecessor(self):
         """
