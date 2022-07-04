@@ -109,7 +109,7 @@ def check_old_servers():
         time.sleep(config.CHECK_OLD_SERVERS_INTERVAL)
         if not ServerManager.server_started:
             continue
-        # logger.debug("Checking old servers...")
+        logger.debug("Checking old servers...")
         old_servers = list(ServerManager.old_known_servers.keys())
         for old_ip in old_servers:
             # Check if the server hasn't been active for a while
@@ -130,7 +130,7 @@ def discover_servers_routine():
         time.sleep(config.DISOCVER_INTERVAL)
         if not ServerManager.server_started:
             continue
-        # logger.debug("Discovering servers...")
+        logger.debug("Discovering servers...")
         known_servers = list(ServerManager.knwon_servers.keys())
         for known_ip in known_servers:
             # Check if the server hasn't been active for a while
@@ -145,7 +145,7 @@ def discover_servers_routine():
                         ServerManager.add_server(discovered_ip)
             except:  # pylint: disable=bare-except
                 logger.debug("Failed to connect to %s for discovering", known_ip)
-        # logger.debug("Known servers: %s", list(ServerManager.knwon_servers.keys()))
+        logger.debug("Known servers: %s", list(ServerManager.knwon_servers.keys()))
 
 
 def ask_passwd() -> str:

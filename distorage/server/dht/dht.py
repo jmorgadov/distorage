@@ -398,7 +398,6 @@ class ChordNode:
             return new_error_response("Error finding successor")
 
         if succ == self.ip_addr:
-            self.log(f"Element {elem_key} if from this node")
             elem = None
             if elem_key not in self.removed_elems:
                 if hashed in self.elems:

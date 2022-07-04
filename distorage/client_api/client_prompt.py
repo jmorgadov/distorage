@@ -133,7 +133,6 @@ class ClientPrompt:
             self._distorage()
             return
 
-        path.parent.mkdir(parents=True, exist_ok=True)
         _, resp, msg = self.session.download(path_in_sys, str(path))
         if not resp:
             print(f"Download failed: {msg}")
