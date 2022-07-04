@@ -1,79 +1,77 @@
-FLUJO DE TRABAJO DE DOCKER:
+1- FLUJO DE TRABAJO DE DOCKER:
 
-    *Construir la imagen de docker:
+-Construir la imagen de docker:
 
-        docker build --tag distorage
+    docker build --tag distorage .
 
-        Con este comando se crea la imagen de docker del proyecto, es necesario usar la etiqueta distorage para que el proyecto se ejecute correctamente.
+Con este comando se crea la imagen de docker del proyecto, es necesario usar la etiqueta distorage para que el proyecto se ejecute correctamente.
 
-    *Ejecutar un servidor:
+-Ejecutar un servidor:
 
-        ./docker_scripts/run_single_server [COMMAND] [ARGS]
+    ./docker_scripts/run_single_server [COMMAND] [ARGS]
 
-        - Donde:
+Donde:
 
-            *COMMAND: Es el comando que se ejecutará en el servidor.
-                -new: Crea un nuevo servidor.
+    COMMAND: Es el comando que se ejecutará en el servidor.
+    new: Crea un nuevo servidor.
 
-                - discover: Busca servidores en la red.
+    discover: Busca servidores en la red.
 
-    *Ejecutar varios servidores a la vez:
+-Ejecutar varios servidores a la vez:
 
-        ./docker_scripts/run_servers [COUNT] [PASSWORD] [TERMINAL]
+    ./docker_scripts/run_servers [COUNT] [PASSWORD] [TERMINAL]
 
-        - Donde:
+Donde:
 
-            *COUNT: Es el número de servidores a iniciar.
+    COUNT: Es el número de servidores a iniciar.
 
-            *PASSWORD: La contraseña del sistema de servidores.
+    PASSWORD: La contraseña del sistema de servidores.
 
-            *TERMINAL: El tipo de emulador de consola en el OS(por defecto es alacritty)
+    TERMINAL: El tipo de emulador de consola en el OS(por defecto es alacritty)
 
-        En este caso se ejecutan la cantidad de servidores especificada, donde el primero se crea con el comando new y
-        los demas con el comando discover, los cuales trataran buscaran en la red y conectarse entre ellos.
+En este caso se ejecutan la cantidad de servidores especificada, donde el primero se crea con el comando new y
+los demas con el comando discover, los cuales trataran buscaran en la red y conectarse entre ellos.
 
-    *Ejecutar un contenedor temporal
+-Ejecutar un contenedor temporal
 
-        ./docker_scripts/temp_container
+    ./docker_scripts/temp_container
 
-        -Util para iniciar clientes y servidores manualmente.
+Permite iniciar clientes y servidores manualmente.
 
-CREACIÓN DE SERVIDORES:
-    Ejecutar:
+2- CREACIÓN DE SERVIDORES:
+Ejecutar:
 
-        python main.py server [COMMAND] [ARGS]
+    python main.py server [COMMAND] [ARGS]
 
-        Crea un servidor nuevo, el cual se ejecutará en un contenedor temporal, con los comandos especificados debajo.
+Crea un servidor nuevo, el cual se ejecutará en un contenedor temporal, con los comandos especificados debajo.
 
-    Donde COMMAND sería:
+Donde COMMAND sería:
 
-    * new [PASSWORD]
+    new [PASSWORD]
         Inicia un nuevo servicio.
 
-    * discover [PASSWORD]
+    discover [PASSWORD]
         Busca otros servidores en la red local.
 
-    * connect [IP_ADDR] [PASSWORD]
+    connect [IP_ADDR] [PASSWORD]
         Conecta el servidor a una dirección IP específica de otro servidor ya integrado a un servicio.
 
-    - El argumento [PASSWORD] se puede omitir, en ese caso este será pedido posteriormente.
+El argumento [PASSWORD] se puede omitir, en ese caso este será pedido posteriormente.
 
+3-CONECTAR UN CLIENTE:
+Ejecutar:
 
-CONECTAR UN CLIENTE:
-    Ejecutar:
+    python main.py client
 
-        python main.py client
+Al entrar como cliente, se pedirá un nombre y contraseña, si es primera vez se podrán rellenar los campos como quiera.
+Deberá especificar a cual servicio desea conectarse(dirección IP de un servidor del servicio)
+Luego se podrá registrar (o loguear) usando esas credenciales.
 
-    Al entrar como cliente, se pedirá un nombre y contraseña, si es primera vez se podrán rellenar los campos como quiera.
-    Deberá especificar a cual servicio desea conectarse(dirección IP de un servidor del servicio)
-    Luego se podrá registrar (o loguear) usando esas credenciales.
+Una vez en el sistema, se proveerá de mecanismo para realizar las siguientes operaciones:
 
-    Una vez en el sistema, la GUI (en este caso es un CLI) le proveerá de mecanismo para realizar
-    las operaciones brindadas por la aplicación:
+    - Subir un nuevo archivo al sistema, especificando la ruta de este.
+    - Descargar un archivo del sistema, especificando la ruta de este.
+    - Listar los archivos del sistema.
+    - Eliminar un archivo del sistema, especificando la ruta de este.
 
-        - Subir un nuevo archivo al sistema, especificando la ruta de este.
-        - Descargar un archivo del sistema, especificando la ruta de este.
-        - Listar los archivos del sistema.
-        - Eliminar un archivo del sistema, especificando la ruta de este.
-
-    Se garantiza el mantenimiento del usuario en el sistema incluso cuando el servidor se desconecte.
+Se garantiza el mantenimiento del usuario en el sistema incluso cuando el servidor se desconecte.
